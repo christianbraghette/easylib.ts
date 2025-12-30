@@ -1,0 +1,32 @@
+{
+  "name": "@easylib.ts/idb",
+  "version": "1.0.0",
+  "description": "Typescript wrapper for IndexDB",
+  "keywords": [],
+  "homepage": "https://github.com/christianbraghette/easylib.ts#readme",
+  "bugs": {
+    "url": "https://github.com/christianbraghette/easylib.ts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/christianbraghette/easylib.ts.git"
+  },
+  "license": "MIT",
+  "author": "Christian Braghette",
+  "type": "commonjs",
+  "exports": {
+    "import": "./dist/index.js",
+    "require": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "prepare": "tsc",
+    "pretest": "tsc",
+    "test": "node ./dist/test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3"
+  }
+}
