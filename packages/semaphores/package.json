@@ -1,0 +1,47 @@
+{
+  "name": "@easylib.ts/semaphores",
+  "version": "1.0.0",
+  "description": "Typescript native Semaphores",
+  "keywords": [],
+  "homepage": "https://github.com/christianbraghette/easylib.ts#readme",
+  "bugs": {
+    "url": "https://github.com/christianbraghette/easylib.ts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/christianbraghette/easylib.ts.git"
+  },
+  "license": "MIT",
+  "author": "Christian Braghette",
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "import": "./dist/async.js",
+      "require": "./dist/async.js",
+      "types": "./dist/async.d.ts"
+    },
+    "./async": {
+      "import": "./dist/async.js",
+      "require": "./dist/async.js",
+      "types": "./dist/async.d.ts"
+    },
+    "./atomic": {
+      "import": "./dist/atomic.js",
+      "require": "./dist/atomic.js",
+      "types": "./dist/atomic.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "prepare": "tsc",
+    "pretest": "tsc",
+    "test": "node ./dist/test.js"
+  },
+  "dependencies": {
+    "@easylib.ts/atomics": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3"
+  }
+}

@@ -6,6 +6,12 @@
         },
         {
             "path": "./packages/idb"
+        },
+        {
+            "path": "./packages/atomics"
+        },
+        {
+            "path": "./packages/semaphores"
         }
     ]
 }
