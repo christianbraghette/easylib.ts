@@ -1,7 +1,7 @@
 {
-  "name": "@easylib.ts/idb",
+  "name": "@easylib.ts/structures",
   "version": "1.0.0",
-  "description": "Typescript wrapper for IndexDB",
+  "description": "Typescript native data structures",
   "keywords": [],
   "homepage": "https://github.com/christianbraghette/easylib.ts#readme",
   "bugs": {
@@ -15,9 +15,16 @@
   "author": "Christian Braghette",
   "type": "commonjs",
   "exports": {
-    "import": "./dist/index.js",
-    "require": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./binaryheap": {
+      "import": "./dist/binaryheap.js",
+      "require": "./dist/binaryheap.js",
+      "types": "./dist/binaryheap.d.ts"
+    }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,9 +32,6 @@
     "prepare": "tsc",
     "pretest": "tsc",
     "test": "node ./dist/test.js"
-  },
-  "dependencies": {
-    "msgpack": "^1.0.3"
   },
   "devDependencies": {
     "@types/node": "^25.0.3"

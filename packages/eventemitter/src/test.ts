@@ -20,6 +20,8 @@ e.on('data', (data, emitter) => {
     emitter.emit('message', "Dio");
 });
 
+e.emit('data', 2);
+
 setTimeout(async () => {
     const test = await e.wait('data');
     e.emit('message', String(test));

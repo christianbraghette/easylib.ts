@@ -44,8 +44,24 @@ export type IndexableData =
  * @param version - Optional database version (defaults to `1`)
  * @returns An `IndexedDB` instance typed to `DB`
  */
-export function openDB<DB extends Record<string, IndexableData>>(name: string, tables: (keyof DB)[], version?: number): IndexedDB<DB> {
+export function openDB<DB extends Record<string, IndexableData>>(name: string, tables: (keyof DB)[], version?: number): Database<DB> {
     return new IndexedDB(name, tables, version);
+}
+
+/**
+ * Open (or create) an ecrypted typed IndexedDB wrapper.
+ *
+ * This is a lightweight helper to create and manage an IndexedDB database
+ * that exposes a small typed API for tables.
+ *
+ * @template DB - Shape of the database where keys are table names and values are the stored value type for that table
+ * @param name - Database name
+ * @param tables - Array of table names to register/create in the database
+ * @param version - Optional database version (defaults to `1`)
+ * @returns An `IndexedDB` instance typed to `DB`
+ */
+export function openEncryptedDB<DB extends Record<string, IndexableData>>(name: string, tables: (keyof DB)[], version?: number): Database<DB> {
+    return new EncryptedIndexedDB(name, tables, version);
 }
 
 /**
@@ -57,11 +73,11 @@ export interface Database<DB extends Record<string, IndexableData>> {
     /** Database name */
     readonly name: string;
     /** Open a table by name and get a `Table` wrapper for it */
-    openTable<K extends keyof DB>(tableName: K): IndexedDBTable<DB[K]>;
+    openTable<K extends keyof DB>(tableName: K): Table<DB[K]>;
     /** Add a new table to the typed DB definition (returns a new `IndexedDB` instance) */
-    addTable<K extends string, T>(tableName: K): IndexedDB<DB & Record<K, T>>;
+    addTable<K extends string, T>(tableName: K): Database<DB & Record<K, T>>;
     /** Remove a table from the typed DB definition (returns a new `IndexedDB` instance) */
-    dropTable<K extends keyof DB>(tableName: K): IndexedDB<Omit<DB, K>>;
+    dropTable<K extends keyof DB>(tableName: K): Database<Omit<DB, K>>;
 }
 
 export interface Cursor<T extends IndexableData> extends AsyncIterable<[IDBValidKey, T]> { }
@@ -138,19 +154,19 @@ class IndexedDB<DB extends Record<string, IndexableData>> implements Database<DB
         });
     }
 
-    public openTable<K extends keyof DB>(tableName: K): IndexedDBTable<DB[K]> {
+    public openTable<K extends keyof DB>(tableName: K): Table<DB[K]> {
         if (!this.tables.has(tableName))
             throw new Error(`Table "${tableName as string}" is not registered`);
         return new IndexedDBTable(this.getDB, tableName as string);
     }
 
-    public addTable<K extends keyof any, T>(tableName: K): IndexedDB<DB & Record<K, T>> {
+    public addTable<K extends keyof any, T>(tableName: K): Database<DB & Record<K, T>> {
         if (this.tables.has(tableName as any))
             return this as any;
         return new IndexedDB<DB & Record<K, T>>(this.name, [...this.tables, tableName], this.version);
     }
 
-    public dropTable<K extends keyof DB>(tableName: K): IndexedDB<Omit<DB, K>> {
+    public dropTable<K extends keyof DB>(tableName: K): Database<Omit<DB, K>> {
         if (!this.tables.has(tableName))
             return this as any;
         this.tables.delete(tableName)
@@ -160,6 +176,122 @@ class IndexedDB<DB extends Record<string, IndexableData>> implements Database<DB
     public close(): void {
         this.db?.close();
         this.db = null;
+    }
+}
+
+class EncryptedIndexedDB<DB extends Record<string, IndexableData>> extends IndexedDB<DB> {
+    private readonly SALT_SIZE = 16;
+    private readonly IV_SIZE = 12; // Standard per AES-GCM
+    private readonly ITERATIONS = 100000; // Sicurezza per la password
+
+    // Helper per convertire Buffer in Base64 (per il salvataggio testuale)
+    private readonly bufToBase64 = (buf: Uint8Array) => btoa(String.fromCharCode(...buf));
+    private readonly base64ToBuf = (str: string) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+
+    #key?: CryptoKey;
+
+    public async deriveKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
+        const encoder = new TextEncoder();
+        const baseKey = await crypto.subtle.importKey(
+            "raw",
+            encoder.encode(password),
+            "PBKDF2",
+            false,
+            ["deriveKey"]
+        );
+
+        return crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt, iterations: this.ITERATIONS, hash: "SHA-256" },
+            baseKey,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"]
+        );
+    }
+
+    private async generateAndSaveKey(password: string) {
+        // 1. Genera la chiave principale
+        const masterKey = await crypto.subtle.generateKey(
+            { name: "AES-GCM", length: 256 },
+            true,
+            ["encrypt", "decrypt"]
+        );
+
+        // 2. Esporta la chiave per poterla salvare
+        const exportedRawKey = new Uint8Array(await crypto.subtle.exportKey("raw", masterKey));
+
+        // 3. Proteggi la chiave con la password
+        const salt = crypto.getRandomValues(new Uint8Array(this.SALT_SIZE));
+        const iv = crypto.getRandomValues(new Uint8Array(this.IV_SIZE));
+        const wrappingKey = await this.deriveKeyFromPassword(password, salt);
+
+        const encryptedKey = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv },
+            wrappingKey,
+            exportedRawKey
+        );
+
+        // 4. Salva tutto (Salt + IV + Chiave Criptata)
+        const payload = {
+            salt: this.bufToBase64(salt),
+            iv: this.bufToBase64(iv),
+            encryptedKey: this.bufToBase64(new Uint8Array(encryptedKey))
+        };
+
+        const id = await crypto.subtle.digest("SHA-256", await crypto.subtle.exportKey("raw", await this.deriveKeyFromPassword(password, new Uint8Array(8).fill(0))));
+        await openDB<{ [key: string]: string }>('__keys__', [this.name]).openTable(this.name).set(id, JSON.stringify(payload));
+    }
+
+    public async open(password: string): Promise<void> {
+        const id = await crypto.subtle.digest("SHA-256", await crypto.subtle.exportKey("raw", await this.deriveKeyFromPassword(password, new Uint8Array(8).fill(0))));
+        const data = await openDB<{ [key: string]: string }>('__keys__', [this.name]).openTable(this.name).get(id)
+        if (!data) {
+            return;
+        }
+        const stored = JSON.parse(data);
+        const salt = this.base64ToBuf(stored.salt);
+        const iv = this.base64ToBuf(stored.iv);
+        const encryptedKey = this.base64ToBuf(stored.encryptedKey);
+
+        const wrappingKey = await this.deriveKeyFromPassword(password, salt);
+
+        const rawKey = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            wrappingKey,
+            encryptedKey
+        );
+
+        this.#key = await crypto.subtle.importKey("raw", rawKey, "AES-GCM", true, ["encrypt", "decrypt"]);
+    }
+
+    async encryptData(data: string, key: CryptoKey): Promise<string> {
+        const encoder = new TextEncoder();
+        const iv = crypto.getRandomValues(new Uint8Array(this.IV_SIZE));
+        const encrypted = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv },
+            key,
+            encoder.encode(data)
+        );
+
+        // Uniamo IV e Dati per facilitare il salvataggio
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(encrypted), iv.length);
+        return this.bufToBase64(combined);
+    }
+
+    async decryptData(encryptedBase64: string, key: CryptoKey): Promise<string> {
+        const combined = this.base64ToBuf(encryptedBase64);
+        const iv = combined.slice(0, this.IV_SIZE);
+        const data = combined.slice(this.IV_SIZE);
+
+        const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            key,
+            data
+        );
+
+        return new TextDecoder().decode(decrypted);
     }
 }
 
