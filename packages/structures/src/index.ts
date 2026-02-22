@@ -1,10 +1,8 @@
 type NativeType = string | number | boolean | bigint;
 
 const GC = new WeakMap<object, NativeType>();
-const hashCode = Symbol('hashCode');
 
 class Native<T extends NativeType> {
-    declare [hashCode]: number;
 
     constructor(value: T) {
         GC.set(this, value);
@@ -38,20 +36,6 @@ class Native<T extends NativeType> {
 
     public equals(other: T | Native<T>): boolean {
         return this.compare(other) === 0;
-    }
-
-    public hashCode(): number {
-        if (this[hashCode])
-            return this[hashCode];
-
-        const s = String(GC.get(this));
-        let hash = 0;
-        for (let i = 0; i < s.length; i++) {
-            hash = Math.imul(31, hash) + s.charCodeAt(i) | 0;
-        }
-
-        this[hashCode] = hash;
-        return hash;
     }
 
     public clone(): Native<T> {
