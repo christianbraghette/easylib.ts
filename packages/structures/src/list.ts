@@ -1,4 +1,4 @@
-import { Collection, Deque, Indexable, Linear, List } from "./interfaces";
+import { Deque, List } from "./interfaces";
 
 class DoublyLinkedNode {
     constructor(public next?: DoublyLinkedNode, public prev?: DoublyLinkedNode) { }
@@ -58,6 +58,10 @@ export class ArrayList<T> implements List<T> {
 
     public unshift(...items: T[]): number {
         return this.#items.unshift(...items);
+    }
+
+    public clear(): void {
+        this.#items = [];
     }
 
     // ### LINEAR METHODS
@@ -154,7 +158,7 @@ export class ArrayList<T> implements List<T> {
         return new ArrayList<U>(this.#items.map((v, i) => callbackfn(v, i, this)));
     }
 
-    public filter<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => value is S): ArrayList<S> {
+    public filter<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => boolean | undefined | null): ArrayList<S> {
         return new ArrayList<S>(this.#items.filter((v, i) => predicate(v, i, this)) as S[]);
     }
 
@@ -170,11 +174,11 @@ export class ArrayList<T> implements List<T> {
         return this.#items.some((v, i) => !!predicate(v, i, this));
     }
 
-    public find<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => value is S): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => boolean | undefined | null): S | undefined {
         return this.#items.find((v, i) => predicate(v, i, this)) as S | undefined;
     }
 
-    public findLast<S extends T>(predicate: (value: T, index: number, obj: ArrayList<T>) => value is S): S | undefined {
+    public findLast<S extends T>(predicate: (value: T, index: number, obj: ArrayList<T>) => boolean | undefined | null): S | undefined {
         for (let i = this.length - 1; i >= 0; i--) {
             const value = this.#items[i];
             if (predicate(value as T, i, this)) {
@@ -279,6 +283,7 @@ export class ArrayList<T> implements List<T> {
 
 export class LinkedList<T> implements List<T>, Deque<T> {
     #data = new WeakMap<DoublyLinkedNode, T>();
+    //#nodes = new Map<T, LinkedStack<DoublyLinkedNode>>();
     #next?: DoublyLinkedNode;
     #prev?: DoublyLinkedNode;
     #reversed: boolean = false;
@@ -341,6 +346,18 @@ export class LinkedList<T> implements List<T>, Deque<T> {
             curr.prev = prev;
     }
 
+    /*#registerNode(value: T, node: DoublyLinkedNode) {
+        if (!this.#nodes.has(value))
+            this.#nodes.set(value, new LinkedStack());
+        this.#nodes.get(value)!.push(node);
+    }
+
+    #unregisterNode(value: T, node: DoublyLinkedNode) {
+        const refs = this.#nodes.get(value);
+        if (refs?.remove(node) && refs.length === 0)
+            this.#nodes.delete(value);
+    }*/
+
     //### BASE METHODS
 
     /**
@@ -357,6 +374,13 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         return this.getValue(this.tail);
     }
 
+    public clear(): void {
+        //this.#nodes.clear();
+        this.#next = undefined;
+        this.#prev = undefined;
+        this.#length = 0;
+    }
+
     /**
      * Adds one or more elements to the end of the list.
      * @param items The elements to add.
@@ -366,6 +390,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         for (const item of items) {
             const newNode = new DoublyLinkedNode();
             this.#data.set(newNode, item);
+            //this.#registerNode(item, newNode);
 
             if (!this.tail) {
                 this.head = newNode;
@@ -390,6 +415,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
             const item = items[i];
             const newNode = new DoublyLinkedNode();
             this.#data.set(newNode, item);
+            //this.#registerNode(item, newNode);
 
             if (!this.head) {
                 this.head = newNode;
@@ -411,19 +437,16 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         const nodeToRemove = this.tail;
         if (!nodeToRemove) return undefined;
 
-        const value = this.getValue(nodeToRemove);
+        const value = this.getValue(nodeToRemove)!;
         const newTail = this.getPrev(nodeToRemove);
 
         this.tail = newTail;
+        if (this.tail) this.setNext(this.tail, undefined);
+        else this.head = undefined;
 
-        if (this.tail) {
-            this.setNext(this.tail, undefined);
-        } else {
-            this.head = undefined;
-        }
-
-        this.#length--;
+        //this.#unregisterNode(value, nodeToRemove);
         this.#data.delete(nodeToRemove);
+        this.#length--;
         return value;
     }
 
@@ -434,7 +457,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         const nodeToRemove = this.head;
         if (!nodeToRemove) return undefined;
 
-        const value = this.getValue(nodeToRemove);
+        const value = this.getValue(nodeToRemove)!;
         const newHead = this.getNext(nodeToRemove);
 
         this.head = newHead;
@@ -445,8 +468,9 @@ export class LinkedList<T> implements List<T>, Deque<T> {
             this.tail = undefined;
         }
 
-        this.#length--;
+        //this.#unregisterNode(value, nodeToRemove);
         this.#data.delete(nodeToRemove);
+        this.#length--;
         return value;
     }
 
@@ -474,8 +498,10 @@ export class LinkedList<T> implements List<T>, Deque<T> {
      * @returns The list instance.
      */
     public fill(value: T): this {
+        //this.#nodes.clear(); // Reset totale della mappa
         for (let node = this.head; !!node; node = this.getNext(node)) {
             this.#data.set(node, value);
+            //this.#registerNode(value, node);
         }
         return this;
     }
@@ -485,10 +511,10 @@ export class LinkedList<T> implements List<T>, Deque<T> {
      * @param searchElement The element to search for.
      */
     public includes(searchElement: T): boolean {
-        for (const value of this.values()) {
-            if (value === searchElement)
+        //return this.#nodes.has(searchElement);
+        for (let node = this.head; !!node; node = this.getNext(node))
+            if (this.#data.get(node) === searchElement)
                 return true;
-        }
         return false;
     }
 
@@ -497,34 +523,45 @@ export class LinkedList<T> implements List<T>, Deque<T> {
      * @param value The element to remove.
      */
     public remove(value: T): boolean {
-        let curr = this.head;
+        let nodeToRemove: DoublyLinkedNode | undefined;
 
-        while (curr) {
-            if (this.getValue(curr) === value) {
-                const prevNode = this.getPrev(curr);
-                const nextNode = this.getNext(curr);
+        for (nodeToRemove = this.head; !!nodeToRemove && this.#data.get(nodeToRemove) !== value; nodeToRemove = this.getNext(nodeToRemove));
+        if (!nodeToRemove) return false;
 
-                if (prevNode) {
-                    this.setNext(prevNode, nextNode);
-                } else {
-                    this.head = nextNode;
-                }
+        const prevNode = this.getPrev(nodeToRemove);
+        const nextNode = this.getNext(nodeToRemove);
 
-                if (nextNode) {
-                    this.setPrev(nextNode, prevNode);
-                } else {
-                    this.tail = prevNode;
-                }
+        if (prevNode) this.setNext(prevNode, nextNode);
+        else this.head = nextNode;
 
-                this.#data.delete(curr);
-                this.#length--;
-                return true;
-            }
-            curr = this.getNext(curr);
-        }
+        if (nextNode) this.setPrev(nextNode, prevNode);
+        else this.tail = prevNode;
 
-        return false;
+        this.#data.delete(nodeToRemove);
+        this.#length--;
+        return true;
     }
+    /*public remove(value: T): boolean {
+        const refs = this.#nodes.get(value);
+        if (!refs || refs.length === 0) return false;
+
+        // Prendiamo l'ultimo inserito (comportamento standard stack-like)
+        const nodeToRemove = refs.last()!;
+
+        const prevNode = this.getPrev(nodeToRemove);
+        const nextNode = this.getNext(nodeToRemove);
+
+        if (prevNode) this.setNext(prevNode, nextNode);
+        else this.head = nextNode;
+
+        if (nextNode) this.setPrev(nextNode, prevNode);
+        else this.tail = prevNode;
+
+        this.#unregisterNode(value, nodeToRemove);
+        this.#data.delete(nodeToRemove);
+        this.#length--;
+        return true;
+    }*/
 
     /**
      * Combines the list with other items or iterables.
@@ -656,11 +693,14 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         const removed: T[] = [];
 
         let cursor = this.head;
-        for (let i = 0; i < s; i++) cursor = this.getNext(cursor);
+        for (let i = 0; i < s; i++)
+            cursor = this.getNext(cursor);
 
         for (let i = 0; i < d; i++) {
             if (!cursor) break;
-            removed.push(this.getValue(cursor)!);
+            const val = this.getValue(cursor)!;
+            removed.push(val);
+
             const nextNode = this.getNext(cursor);
             const prevNode = this.getPrev(cursor);
 
@@ -672,6 +712,8 @@ export class LinkedList<T> implements List<T>, Deque<T> {
 
             const toDelete = cursor;
             cursor = nextNode;
+
+            //this.#unregisterNode(val, toDelete);
             this.#data.delete(toDelete);
             this.#length--;
         }
@@ -679,6 +721,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         for (const item of items) {
             const newNode = new DoublyLinkedNode();
             this.#data.set(newNode, item);
+            //this.#registerNode(item, newNode);
 
             const beforeNode = cursor ? this.getPrev(cursor) : this.tail;
 
@@ -691,6 +734,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
                 const afterNode = this.getNext(beforeNode);
                 this.setNext(beforeNode, newNode);
                 this.setPrev(newNode, beforeNode);
+
                 if (afterNode) {
                     this.setNext(newNode, afterNode);
                     this.setPrev(afterNode, newNode);
@@ -718,12 +762,11 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         if (t >= this.length || s >= e) return this;
 
         const buffer: T[] = [];
-        let count = 0;
-        const limit = e - s;
-
         let nodeS = this.head;
         for (let i = 0; i < s; i++) nodeS = this.getNext(nodeS);
 
+        let count = 0;
+        const limit = e - s;
         while (nodeS && count < limit) {
             buffer.push(this.getValue(nodeS)!);
             nodeS = this.getNext(nodeS);
@@ -735,7 +778,12 @@ export class LinkedList<T> implements List<T>, Deque<T> {
 
         for (const val of buffer) {
             if (!nodeT) break;
+
+            const oldVal = this.getValue(nodeT)!;
+            //this.#unregisterNode(oldVal, nodeT);
             this.#data.set(nodeT, val);
+            //this.#registerNode(val, nodeT);
+
             nodeT = this.getNext(nodeT);
         }
 
@@ -771,7 +819,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
     /**
      * Creates a new list with all elements that pass the test implemented by the provided function.
      */
-    public filter<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => value is S): LinkedList<S> {
+    public filter<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => boolean | undefined | null): LinkedList<S> {
         const self = this;
         const filteredGenerator = function* () {
             let i = 0;
@@ -820,7 +868,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
     /**
      * Returns the value of the first element that satisfies the provided testing function.
      */
-    public find<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => value is S): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => boolean | undefined | null): S | undefined {
         let i = 0;
         for (const value of this.values()) {
             if (predicate(value, i++, this)) return value as S;
@@ -833,7 +881,8 @@ export class LinkedList<T> implements List<T>, Deque<T> {
     /**
      * Returns the value of the last element that satisfies the provided testing function.
      */
-    public findLast<S extends T>(predicate: (value: T, index: number, obj: LinkedList<T>) => value is S): S | undefined {
+    //public findLast<S extends T>(predicate: (value: T, index: number, obj: LinkedList<T>) => value is S): S | undefined {
+    public findLast<S extends T>(predicate: (value: T, index: number, obj: LinkedList<T>) => boolean | undefined | null): S | undefined {
         let i = this.length - 1;
         for (let node = this.tail; !!node; node = this.getPrev(node)) {
             const value = this.getValue(node) as T;
@@ -897,35 +946,92 @@ export class LinkedList<T> implements List<T>, Deque<T> {
     public sort(compareFn?: (a: T, b: T) => number): this {
         if (this.length <= 1) return this;
 
-        const defaultCompare = (a: any, b: any) => {
-            if (a === b) return 0;
-            return String(a) < String(b) ? -1 : 1;
-        };
-        const compare = compareFn ?? defaultCompare;
+        const compare = compareFn ?? ((a, b) => String(a) < String(b) ? -1 : 1);
 
-        let nodes: DoublyLinkedNode[] = [];
-        for (let node = this.head; !!node; node = this.getNext(node)) {
-            nodes.push(node);
-        }
-
-        nodes.sort((a, b) => compare(this.#data.get(a)!, this.#data.get(b)!));
-
-        this.#length = nodes.length;
-        this.#next = nodes[0];
-        this.#prev = nodes[nodes.length - 1];
+        let head = this.head;
         this.#reversed = false;
 
-        for (let i = 0; i < nodes.length; i++) {
-            const curr = nodes[i];
-            const next = nodes[i + 1] || undefined;
-            const prev = nodes[i - 1] || undefined;
+        // Merge Sort Bottom-Up (Iterative)
+        for (let step = 1; step < this.length; step *= 2) {
+            let prevEnd: DoublyLinkedNode | undefined = undefined;
+            let curr: DoublyLinkedNode | undefined = head;
+            let newHead: DoublyLinkedNode | undefined = undefined;
 
-            curr.next = next;
-            curr.prev = prev;
+            while (curr) {
+                let left = curr;
+                let right = this.#split(left, step);
+                curr = this.#split(right, step);
+                const merged = this.#merge(left, right, compare);
+
+                if (!prevEnd) {
+                    newHead = merged;
+                } else {
+                    prevEnd.next = merged;
+                    if (merged) merged.prev = prevEnd;
+                }
+
+                while (prevEnd?.next) {
+                    prevEnd = prevEnd.next;
+                }
+                if (!prevEnd) prevEnd = merged;
+                while (prevEnd?.next) prevEnd = prevEnd.next;
+            }
+            head = newHead;
         }
 
+        this.#next = head;
+        let tail = head;
+        while (tail?.next) tail = tail.next;
+        this.#prev = tail;
+
+        //this.#rebuildNodesMap();
         return this;
     }
+
+    /**
+     * Taglia la lista dopo 'n' nodi e restituisce il resto della lista.
+     */
+    #split(node: DoublyLinkedNode | undefined, n: number): DoublyLinkedNode | undefined {
+        if (!node) return undefined;
+
+        for (let i = 1; i < n && node.next; i++)
+            node = node.next;
+
+        const rest = node.next;
+        node.next = undefined;
+        if (rest) rest.prev = undefined;
+        return rest;
+    }
+
+    #merge(left: DoublyLinkedNode | undefined, right: DoublyLinkedNode | undefined, compare: (a: T, b: T) => number): DoublyLinkedNode | undefined {
+        if (!left) return right;
+        if (!right) return left;
+
+        let result: DoublyLinkedNode;
+
+        const leftVal = this.#data.get(left)!;
+        const rightVal = this.#data.get(right)!;
+
+        if (compare(leftVal, rightVal) <= 0) {
+            result = left;
+            result.next = this.#merge(left.next, right, compare);
+            if (result.next) result.next.prev = result;
+            result.prev = undefined;
+        } else {
+            result = right;
+            result.next = this.#merge(left, right.next, compare);
+            if (result.next) result.next.prev = result;
+            result.prev = undefined;
+        }
+
+        return result;
+    }
+
+    /*#rebuildNodesMap(): void {
+        this.#nodes.clear();
+        for (let node = this.#next; !!node; node = node.next)
+            this.#registerNode(this.#data.get(node)!, node);
+    }*/
 
     //### INDEXABLE FUNCTIONALS
 
@@ -970,21 +1076,19 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         let newTail = this.head;
 
         if (newTailIndex < this.length / 2) {
-            for (let i = 0; i < newTailIndex; i++) {
-                newTail = this.getNext(newTail);
-            }
+            for (let i = 0; i < newTailIndex; i++) newTail = this.getNext(newTail);
         } else {
             newTail = this.tail;
-            for (let i = 0; i < (this.length - 1 - newTailIndex); i++) {
-                newTail = this.getPrev(newTail);
-            }
+            for (let i = 0; i < (this.length - 1 - newTailIndex); i++) newTail = this.getPrev(newTail);
         }
 
         const newHead = this.getNext(newTail);
+        const oldHead = this.head;
+        const oldTail = this.tail;
 
-        if (newHead && newTail) {
-            this.setNext(this.tail!, this.head);
-            this.setPrev(this.head!, this.tail);
+        if (newHead && newTail && oldHead && oldTail) {
+            this.setNext(oldTail, oldHead);
+            this.setPrev(oldHead, oldTail);
 
             this.head = newHead;
             this.tail = newTail;
@@ -993,6 +1097,45 @@ export class LinkedList<T> implements List<T>, Deque<T> {
             this.setNext(this.tail, undefined);
         }
 
+        return this;
+    }
+
+    /**
+     * Remove duplicate elements in the list.
+     */
+    public deduplicate(): this {
+        const seen = new Set<T>();
+        return this.#filterInPlace((val) => {
+            if (seen.has(val)) return false;
+            seen.add(val);
+            return true;
+        });
+    }
+
+    #filterInPlace(predicate: (value: T, index: number, obj: this) => boolean): this {
+        let node = this.head;
+        let i = 0;
+
+        while (node) {
+            const val = this.getValue(node)!;
+            const next = this.getNext(node);
+
+            if (!predicate(val, i++, this)) {
+                const p = this.getPrev(node);
+                const n = this.getNext(node);
+
+                if (p) this.setNext(p, n);
+                else this.head = n;
+
+                if (n) this.setPrev(n, p);
+                else this.tail = p;
+
+                //this.#unregisterNode(val, node);
+                this.#data.delete(node);
+                this.#length--;
+            }
+            node = next;
+        }
         return this;
     }
 

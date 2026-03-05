@@ -67,7 +67,7 @@ export class HashMap<K, V> implements MapInterface<K, V> {
      * @param callbackfn Function to execute for each element.
      */
     public forEach(callbackfn: (value: V, key: K, obj: HashMap<K, V>) => void): void {
-        for (const [key, value] of this.#map) {
+        for (const [key, value] of this.entries()) {
             callbackfn(value, key, this);
         }
     }
@@ -79,7 +79,7 @@ export class HashMap<K, V> implements MapInterface<K, V> {
      */
     public map<U>(callbackfn: (value: V, key: K, obj: HashMap<K, V>) => U): HashMap<K, U> {
         const newMap = new HashMap<K, U>();
-        for (const [key, value] of this.#map) {
+        for (const [key, value] of this.entries()) {
             newMap.set(key, callbackfn(value, key, this));
         }
         return newMap;
@@ -93,7 +93,7 @@ export class HashMap<K, V> implements MapInterface<K, V> {
      */
     public reduce<U>(callbackfn: (previousValue: U, currentValue: V, currentKey: K, obj: HashMap<K, V>) => U, initialValue: U): U {
         let accumulator = initialValue;
-        for (const [key, value] of this.#map) {
+        for (const [key, value] of this.entries()) {
             accumulator = callbackfn(accumulator, value, key, this);
         }
         return accumulator;
@@ -104,7 +104,7 @@ export class HashMap<K, V> implements MapInterface<K, V> {
      * @param predicate Function to test each element.
      */
     public every(predicate: (value: V, key: K, obj: HashMap<K, V>) => boolean | undefined | null): boolean {
-        for (const [key, value] of this.#map) {
+        for (const [key, value] of this.entries()) {
             if (!predicate(value, key, this)) return false;
         }
         return true;
@@ -115,7 +115,7 @@ export class HashMap<K, V> implements MapInterface<K, V> {
      * @param predicate Function to test each element.
      */
     public some(predicate: (value: V, key: K, obj: HashMap<K, V>) => boolean | undefined | null): boolean {
-        for (const [key, value] of this.#map) {
+        for (const [key, value] of this.entries()) {
             if (predicate(value, key, this)) return true;
         }
         return false;
@@ -126,11 +126,11 @@ export class HashMap<K, V> implements MapInterface<K, V> {
      * @param predicate Function to test each element.
      * @template S The refined type of the values in the new HashMap.
      */
-    public filter<S extends V>(predicate: (value: V, key: K, obj: HashMap<K, V>) => value is S): HashMap<K, S> {
+    public filter<S extends V>(predicate: (value: V, key: K, obj: HashMap<K, V>) => boolean | undefined | null): HashMap<K, S> {
         const result = new HashMap<K, S>();
-        for (const [key, value] of this.#map) {
+        for (const [key, value] of this.entries()) {
             if (predicate(value, key, this)) {
-                result.set(key, value);
+                result.set(key, value as S);
             }
         }
         return result;
@@ -140,9 +140,9 @@ export class HashMap<K, V> implements MapInterface<K, V> {
      * Returns the value of the first element in the map that satisfies the provided testing function.
      * @param predicate Function to execute on each value.
      */
-    public find<S extends V>(predicate: (value: V, key: K, obj: HashMap<K, V>) => value is S): S | undefined {
-        for (const [key, value] of this.#map) {
-            if (predicate(value, key, this)) return value;
+    public find<S extends V>(predicate: (value: V, key: K, obj: HashMap<K, V>) => boolean | undefined | null): S | undefined {
+        for (const [key, value] of this.entries()) {
+            if (predicate(value, key, this)) return value as S;
         }
         return undefined;
     }
@@ -536,10 +536,10 @@ export class TreeMap<K, V> implements MapInterface<K, V> {
      * @param predicate Function to test each entry.
      * @returns A new TreeMap containing only the filtered entries.
      */
-    public filter<S extends V>(predicate: (value: V, key: K, obj: this) => value is S): TreeMap<K, S> {
+    public filter<S extends V>(predicate: (value: V, key: K, obj: this) => boolean | undefined | null): TreeMap<K, S> {
         const result = new TreeMap<K, S>(this.compareFn);
         for (const [key, value] of this.entries()) {
-            if (predicate(value, key, this)) result.set(key, value);
+            if (predicate(value, key, this)) result.set(key, value as S);
         }
         return result;
     }
@@ -549,9 +549,9 @@ export class TreeMap<K, V> implements MapInterface<K, V> {
      * @param predicate Function to execute on each element.
      * @returns The value of the first entry that passes the test, or undefined.
      */
-    public find<S extends V>(predicate: (value: V, key: K, obj: this) => value is S): S | undefined {
+    public find<S extends V>(predicate: (value: V, key: K, obj: this) => boolean | undefined | null): S | undefined {
         for (const [key, value] of this.entries()) {
-            if (predicate(value, key, this)) return value;
+            if (predicate(value, key, this)) return value as S;
         }
         return undefined;
     }

@@ -1,7 +1,7 @@
 {
-  "name": "@easylib.ts/structures",
+  "name": "@easylib.ts/pandas",
   "version": "1.0.0",
-  "description": "Typescript native data structures",
+  "description": "Typescript pandas structures",
   "keywords": [],
   "homepage": "https://github.com/christianbraghette/easylib.ts#readme",
   "bugs": {
@@ -24,16 +24,6 @@
       "import": "./dist/binaryheap.js",
       "require": "./dist/binaryheap.js",
       "types": "./dist/binaryheap.d.ts"
-    },
-    "./list": {
-      "import": "./dist/list.js",
-      "require": "./dist/list.js",
-      "types": "./dist/list.d.ts"
-    },
-    "./map": {
-      "import": "./dist/map.js",
-      "require": "./dist/map.js",
-      "types": "./dist/map.d.ts"
     }
   },
   "main": "./dist/index.js",
@@ -42,6 +32,9 @@
     "prepare": "tsc",
     "pretest": "tsc",
     "test": "node ./dist/test.js"
+  },
+  "dependencies": {
+    "@easylib.ts/structures": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.3"

@@ -124,11 +124,11 @@ export class HashSet<T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns A new HashSet with the elements that passed the test.
      */
-    public filter<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => value is S): HashSet<S> {
+    public filter<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => boolean | undefined | null): HashSet<S> {
         const result = new HashSet<S>();
         for (const value of this.#set) {
             if (predicate(value, value, this)) {
-                result.add(value);
+                result.add(value as S);
             }
         }
         return result;
@@ -139,10 +139,10 @@ export class HashSet<T> implements SetInterface<T> {
      * @param predicate Function to execute on each value.
      * @returns The first element that matches the predicate, or undefined if none match.
      */
-    public find<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => value is S): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => boolean | undefined | null): S | undefined {
         for (const value of this.#set) {
             if (predicate(value, value, this)) {
-                return value;
+                return value as S;
             }
         }
         return undefined;
@@ -164,7 +164,7 @@ export class HashSet<T> implements SetInterface<T> {
      * @param other The HashSet to intersect with.
      * @returns A new HashSet containing the intersection.
      */
-    public intersection(other: HashSet<T>): HashSet<T> {
+    public intersection(other: SetInterface<T>): HashSet<T> {
         const result = new HashSet<T>();
         for (const item of this) {
             if (other.has(item)) result.add(item);
@@ -177,7 +177,7 @@ export class HashSet<T> implements SetInterface<T> {
      * @param other The HashSet to compare against.
      * @returns A new HashSet containing the difference.
      */
-    public difference(other: HashSet<T>): HashSet<T> {
+    public difference(other: SetInterface<T>): HashSet<T> {
         const result = new HashSet<T>();
         for (const item of this) {
             if (!other.has(item)) result.add(item);
@@ -190,7 +190,7 @@ export class HashSet<T> implements SetInterface<T> {
      * @param other The potential superset.
      * @returns True if all elements of the current set are in the other set.
      */
-    public isSubsetOf(other: HashSet<T>): boolean {
+    public isSubsetOf(other: SetInterface<T>): boolean {
         if (this.size > other.size) return false;
         return this.every(value => other.has(value));
     }
@@ -573,10 +573,10 @@ export class TreeSet<T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns A new TreeSet with filtered elements.
      */
-    public filter<S extends T>(predicate: (value: T, key: T, obj: this) => value is S): TreeSet<S> {
+    public filter<S extends T>(predicate: (value: T, key: T, obj: this) => boolean | undefined | null): TreeSet<S> {
         const result = new TreeSet<S>(this.compareFn as any);
         for (const value of this.values()) {
-            if (predicate(value, value, this)) result.add(value);
+            if (predicate(value, value, this)) result.add(value as S);
         }
         return result;
     }
@@ -587,9 +587,9 @@ export class TreeSet<T> implements SetInterface<T> {
      * @param predicate Function to execute on each value.
      * @returns The first element that matches the predicate, or undefined.
      */
-    public find<S extends T>(predicate: (value: T, key: T, obj: this) => value is S): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: T, obj: this) => boolean | undefined | null): S | undefined {
         for (const value of this.values()) {
-            if (predicate(value, value, this)) return value;
+            if (predicate(value, value, this)) return value as S;
         }
         return undefined;
     }
