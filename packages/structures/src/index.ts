@@ -56,3 +56,33 @@ class Native<T extends NativeType> {
 }
 
 const Box = <T extends NativeType>(v: T): Native<T> & T => new Native(v) as any;
+
+export type Tuple<T extends any[]> = [...T];
+
+export class IndexableIterable<T extends Tuple<any>> implements Iterable<T> {
+    readonly [index: number]: IterableIterator<T[keyof T]>;
+    #iterable: Iterable<T>;
+
+    constructor(iterable: Iterable<T>) {
+        this.#iterable = iterable;
+        return new Proxy(this, {
+            get: (target, prop) => {
+                if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+                    return function* () {
+                        for (const entry of iterable)
+                            yield entry[Number(prop)] as T[keyof T & number];
+                    }
+                }
+                return Reflect.get(target, prop);
+            }
+        });
+    }
+
+    *[Symbol.iterator](): IterableIterator<T> {
+        yield* this.#iterable;
+    }
+
+    public static from<S extends Tuple<any>>(iterable: Iterable<S>){
+        return new this(iterable);
+    }
+}

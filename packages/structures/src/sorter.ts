@@ -19,17 +19,21 @@ class SorterIterable<T> implements Iterable<T> {
 }
 
 export function timSort<T>(iterable: Iterable<T>, compareFn: (a: T, b: T) => number): SorterIterable<T> {
-    return new SorterIterable(new ArrayList(iterable).sort(compareFn).values)
+    const sorted = new ArrayList(iterable).sort(compareFn);
+    return new SorterIterable(() => sorted.values())
 }
 
 export function mergeSort<T>(iterable: Iterable<T>, compareFn: (a: T, b: T) => number): SorterIterable<T> {
-    return new SorterIterable(new LinkedList(iterable).sort(compareFn).values);
+    const sorted = new LinkedList(iterable).sort(compareFn);
+    return new SorterIterable(() => sorted.values());
 }
 
 export function heapSort<T>(iterable: Iterable<T>, compareFn: (a: T, b: T) => number): SorterIterable<T> {
-    return new SorterIterable(new BinaryHeap(compareFn, iterable).values);
+    const sorted = new BinaryHeap(compareFn, iterable);
+    return new SorterIterable(() => sorted.values());
 }
 
 export function treeSort<T>(iterable: Iterable<T>, compareFn: (a: T, b: T) => number): SorterIterable<T> {
-    return new SorterIterable(new TreeSet(compareFn, iterable).values);
+    const sorted = new TreeSet(compareFn, iterable)
+    return new SorterIterable(() => sorted.values());
 }

@@ -35,12 +35,23 @@ export class Vector<T> {
         return new Vector(iterator);
     }
 
-    public apply<S>(fn: (value: T | undefined) => S): Vector<S> {
+    public apply<S>(fn: (entry: [Key, T | undefined]) => [Key, S]): Vector<S> {
+        const self = this;
+
+        function* iterator(): IterableIterator<[Key, S]> {
+            for (const entry of self.entries())
+                yield fn(entry);
+        }
+
+        return new Vector(iterator);
+    }
+
+    public map<S>(fn: (value: T | undefined, key: Key) => S): Vector<S> {
         const self = this;
 
         function* iterator(): IterableIterator<[Key, S]> {
             for (const [key, value] of self.entries())
-                yield [key, fn(value)];
+                yield [key, fn(value, key)];
         }
 
         return new Vector(iterator);
@@ -48,28 +59,28 @@ export class Vector<T> {
 
     public mul<S>(value: Iterable<[Key, S]> | number): Vector<number> {
         if (typeof value === 'number') {
-            return this.apply(val => val === '' ? NaN : Number(val) * value)
+            return this.apply(([key, val]) => [key, val === '' ? NaN : Number(val) * value])
         }
         return this.combine<S, number>(value, (left, right) => (left === '' ? NaN : Number(left)) * (right === '' ? NaN : Number(right)));
     }
 
     public div<S>(value: Iterable<[Key, S]> | number): Vector<number> {
         if (typeof value === 'number') {
-            return this.apply(val => val === '' ? NaN : Number(val) / value)
+            return this.apply(([key, val]) => [key, val === '' ? NaN : Number(val) / value])
         }
         return this.combine<S, number>(value, (left, right) => (left === '' ? NaN : Number(left)) / (right === '' ? NaN : Number(right)));
     }
 
     public add<S>(value: Iterable<[Key, S]> | number): Vector<number> {
         if (typeof value === 'number') {
-            return this.apply(val => val === '' ? NaN : Number(val) + value)
+            return this.apply(([key, val]) => [key, val === '' ? NaN : Number(val) + value])
         }
         return this.combine<S, number>(value, (left, right) => (left === '' ? NaN : Number(left)) + (right === '' ? NaN : Number(right)));
     }
 
     public sub<S>(value: Iterable<[Key, S]> | number): Vector<number> {
         if (typeof value === 'number') {
-            return this.apply(val => val === '' ? NaN : Number(val) - value)
+            return this.apply(([key, val]) => [key, val === '' ? NaN : Number(val) - value])
         }
         return this.combine<S, number>(value, (left, right) => (left === '' ? NaN : Number(left)) - (right === '' ? NaN : Number(right)));
     }
@@ -95,7 +106,8 @@ export class Vector<T> {
     }
 
     public sort(compareFn: (a: [Key, T | undefined], b: [Key, T | undefined]) => number): Vector<T> {
-        return new Vector(mergeSort<[Key, T | undefined]>(this.entries(), compareFn).values);
+        const sorted = mergeSort<[Key, T | undefined]>(this.entries(), compareFn);
+        return new Vector(() => sorted.values());
     }
 
     public aggregate(): Aggregator<T> {
