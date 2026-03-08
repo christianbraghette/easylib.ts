@@ -21,7 +21,7 @@ class Native<T extends NativeType> {
                 }
 
                 return nativeValue[prop];
-            },
+            }
         });
     }
 

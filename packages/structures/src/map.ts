@@ -1,5 +1,5 @@
 import { Map as MapInterface } from "./interfaces";
-import { LinkedList } from "./list";
+import { ArrayList, LinkedList } from "./list";
 
 export class HashMap<K, V> implements MapInterface<K, V> {
     #map: Map<K, V>;
@@ -145,6 +145,20 @@ export class HashMap<K, V> implements MapInterface<K, V> {
             if (predicate(value, key, this)) return value as S;
         }
         return undefined;
+    }
+
+    public sort(compareFn: (a: [K, V], b: [K, V]) => number): this {
+        const entries = new ArrayList(this.#map.entries());
+
+        entries.sort(compareFn);
+
+        this.#map.clear();
+
+        for (const [key, value] of entries) {
+            this.#map.set(key, value);
+        }
+
+        return this;
     }
 
     /**

@@ -1,5 +1,5 @@
 import { Set as SetInterface } from "./interfaces";
-import { LinkedList } from "./list";
+import { ArrayList, LinkedList } from "./list";
 
 export class HashSet<T> implements SetInterface<T> {
     #set: Set<T>;
@@ -148,12 +148,26 @@ export class HashSet<T> implements SetInterface<T> {
         return undefined;
     }
 
+    public sort(compareFn: (a: T, b: T) => number): this {
+        const entries = new ArrayList(this.#set.values());
+
+        entries.sort(compareFn);
+
+        this.#set.clear();
+
+        for (const value of entries) {
+            this.#set.add(value);
+        }
+
+        return this;
+    }
+
     /**
      * Combines the current set with another iterable to create a new set containing all unique elements from both.
      * @param other An iterable of elements to join with.
      * @returns A new HashSet containing the union.
      */
-    public union(other: Iterable<T>): HashSet<T> {
+    public union(other: SetInterface<T>): HashSet<T> {
         const result = new HashSet<T>(this);
         for (const item of other) result.add(item);
         return result;
@@ -166,9 +180,8 @@ export class HashSet<T> implements SetInterface<T> {
      */
     public intersection(other: SetInterface<T>): HashSet<T> {
         const result = new HashSet<T>();
-        for (const item of this) {
+        for (const item of this)
             if (other.has(item)) result.add(item);
-        }
         return result;
     }
 
@@ -179,9 +192,8 @@ export class HashSet<T> implements SetInterface<T> {
      */
     public difference(other: SetInterface<T>): HashSet<T> {
         const result = new HashSet<T>();
-        for (const item of this) {
+        for (const item of this)
             if (!other.has(item)) result.add(item);
-        }
         return result;
     }
 

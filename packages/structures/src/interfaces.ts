@@ -80,7 +80,6 @@ export interface LinearFunctionals<K, V> extends Functionals<K, V> {
 }
 
 export interface IndexableFunctionals<V> extends LinearFunctionals<number, V> {
-    sort(compareFn: (a: V, b: V) => number): this;
     findIndex(predicate: (value: V, index: number, obj: Indexable<V>) => boolean | undefined | null): number;
     findLastIndex(predicate: (value: V, index: number, obj: Indexable<V>) => boolean | undefined | null): number;
 }
@@ -115,7 +114,7 @@ export interface Map<K, V> extends NonLinear<K, V>, Functionals<K, V> {
 export interface Set<V> extends NonLinear<V, V>, Functionals<V, V> {
     add(value: V): this;
 
-    union(other: Iterable<V>): Set<V>
+    union(other: Set<V>): Set<V>
     intersection(other: Set<V>): Set<V>
     difference(other: Set<V>): Set<V>
     isSubsetOf(other: Set<V>): boolean
@@ -127,5 +126,5 @@ export interface Set<V> extends NonLinear<V, V>, Functionals<V, V> {
 }
 
 export interface SortedSet<V> extends Set<V> {
-    map<U>(callbackfn: (value: V, key: V, obj: SortedSet<V>) => U, newCompareFn?: (a: U, b: U) => -1 | 0 | 1): SortedSet<U>;
+    map<U>(callbackfn: (value: V, key: V, obj: SortedSet<V>) => U, newCompareFn?: (a: U, b: U) => number): SortedSet<U>;
 }
