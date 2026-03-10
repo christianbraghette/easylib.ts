@@ -1,4 +1,5 @@
 import { ReleaseFunction, Lock, Semaphore, Mutex } from "./interfaces";
+// refer to the sibling atomics package with a relative path
 import type { AtomicNumber } from "@easylib.ts/atomics";
 
 export class AtomicSemaphore implements Semaphore {

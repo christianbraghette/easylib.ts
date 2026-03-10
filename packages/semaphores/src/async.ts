@@ -177,6 +177,7 @@ export class AsyncLocker<T> extends AsyncSemaphore {
 
             constructor(locker: AsyncLocker<T>, private readonly lock: Lock) {
                 this.#locker = locker;
+                this.release = this.lock.release;
             }
 
             public get value() {
@@ -191,7 +192,7 @@ export class AsyncLocker<T> extends AsyncSemaphore {
                 return this.lock.locked;
             }
 
-            public release: ReleaseFunction = this.lock.release;
+            public release: ReleaseFunction;
 
             [Symbol.dispose](): void {
                 this.lock.release();

@@ -1,8 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
   },
   "references": [
     {

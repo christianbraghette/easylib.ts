@@ -5,8 +5,7 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "build": "tsc -b",
-    "prepare": "npm run build"
+    "build": "tsc -b"
   },
   "workspaces": [
     "packages/*"

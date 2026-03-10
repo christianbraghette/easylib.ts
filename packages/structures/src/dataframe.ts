@@ -1,7 +1,6 @@
 import { IndexableIterable, Tuple } from ".";
-import { ArrayList } from "./list";
 import { HashMap } from "./map";
-import { Aggregator, Vector } from "./vector";
+import { Vector } from "./vector";
 
 /*class Series<T> {
     #map: HashMap<>;
@@ -25,7 +24,7 @@ class Index<T> extends Vector<T> {
         let i = 0;
         for (const value of iterable ?? [])
             array.set(i, value);
-        super(() => array.entries());
+        super(() => array.values());
         this.#array = array;
 
         return new Proxy(this, {

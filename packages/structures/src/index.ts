@@ -59,8 +59,8 @@ const Box = <T extends NativeType>(v: T): Native<T> & T => new Native(v) as any;
 
 export type Tuple<T extends any[]> = [...T];
 
-export class IndexableIterable<T extends Tuple<any>> implements Iterable<T> {
-    readonly [index: number]: IterableIterator<T[keyof T]>;
+export class IndexableIterable<T extends Record<string | number, any>> implements Iterable<T> {
+    readonly [index: string | number]: IterableIterator<T[keyof T]>;
     #iterable: Iterable<T>;
 
     constructor(iterable: Iterable<T>) {
@@ -81,8 +81,19 @@ export class IndexableIterable<T extends Tuple<any>> implements Iterable<T> {
     *[Symbol.iterator](): IterableIterator<T> {
         yield* this.#iterable;
     }
+}
 
-    public static from<S extends Tuple<any>>(iterable: Iterable<S>){
-        return new this(iterable);
+export class CombinedIterable<T extends Tuple<any[]>> extends IndexableIterable<T> {
+    constructor(...iterables: Iterable<T[keyof T]>[]) {
+        const iterators = iterables.map(val => val[Symbol.iterator]());
+
+        function* iterator(): IterableIterator<T> {
+            do {
+                var res = iterators.map(val => val.next());
+                yield res.map(val => !val.done ? val.value : undefined) as T;
+            } while (res.every(val => val.done));
+        }
+
+        super(iterator());
     }
 }
