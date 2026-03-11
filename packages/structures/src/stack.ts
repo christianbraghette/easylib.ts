@@ -1,4 +1,4 @@
-import { Stack } from "./interfaces"
+import type { Stack } from "./interfaces"
 
 class StackNode {
     constructor(public next?: StackNode, public prev?: StackNode) { }

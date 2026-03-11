@@ -1,4 +1,7 @@
 **/dist
 **/node_modules
 
+**/tsconfig.tsbuildinfo
+tsconfig.tsbuildinfo
+
 *.tgz

@@ -1,4 +1,4 @@
-import { Map as MapInterface } from "./interfaces";
+import type { Map as MapInterface } from "./interfaces";
 import { ArrayList, LinkedList } from "./list";
 
 export class HashMap<K, V> implements MapInterface<K, V> {

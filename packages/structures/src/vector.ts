@@ -1,4 +1,4 @@
-import { CombinedIterable } from ".";
+import { CombinedIterable } from "./index";
 import { mergeSort } from "./sorter";
 
 export class Vector<T> {

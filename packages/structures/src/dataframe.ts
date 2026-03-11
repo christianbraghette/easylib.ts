@@ -1,4 +1,4 @@
-import { IndexableIterable, Tuple } from ".";
+import { IndexableIterable, Tuple } from "./index";
 import { HashMap } from "./map";
 import { Vector } from "./vector";
 

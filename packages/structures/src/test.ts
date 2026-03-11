@@ -1,4 +1,4 @@
-import { IndexableIterable } from ".";
+import { IndexableIterable } from "./index";
 import { LinkedList } from "./list";
 
 const list = new LinkedList([[11, 15], [55, 72], [66, 28], [123, 42], [9, 1]]);

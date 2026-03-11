@@ -1,10 +1,13 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "target": "es2020",
-    "module": "node16",
-    "rootDir": "src",
-    "outDir": "dist"
-  },
-  "include": ["src"]
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "dist"
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "dist"
+    ]
 }

@@ -1,5 +1,4 @@
-import { ReleaseFunction, Lock, Semaphore, Mutex } from "./interfaces";
-// refer to the sibling atomics package with a relative path
+import type { ReleaseFunction, Lock, Semaphore, Mutex } from "./interfaces";
 import type { AtomicNumber } from "@easylib.ts/atomics";
 
 export class AtomicSemaphore implements Semaphore {
@@ -122,23 +121,30 @@ export class AtomicSemaphore implements Semaphore {
     }
 
     public async run<T>(fn: () => Promise<T> | T): Promise<T> {
-        using release = await this.acquire();
-        return await fn();
+        const release = await this.acquire();
+        try {
+            return await fn()
+        } finally {
+            release.release();
+        }
     }
 
     public async runWithTimeout<T>(fn: () => Promise<T> | T, ms: number): Promise<T> {
-        // Creiamo un AbortController per gestire il timeout
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), ms);
 
         try {
-            using lock = await this.acquire(controller.signal);
-            return await fn();
+            const lock = await this.acquire(controller.signal);
+            try {
+                return await fn();
+            } finally {
+                lock.release();
+            }
         } catch (err) {
             if (err instanceof Error && err.message === "Acquire aborted") {
                 throw new Error("Mutex timeout");
             }
-            throw err; // qualsiasi altro errore viene propagato
+            throw err;
         } finally {
             clearTimeout(timer);
         }
@@ -153,4 +159,4 @@ export class AtomicMutex extends AtomicSemaphore implements Mutex {
     public accessor maxCount: 1 = 1;
 }
 
-export * from "./interfaces";
+export type * from "./interfaces";

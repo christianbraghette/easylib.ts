@@ -1,4 +1,9 @@
 {
+    "compilerOptions": {
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true
+    },
     "references": [
         {
             "path": "./packages/eventemitter"
@@ -11,8 +16,7 @@
         },
         {
             "path": "./packages/semaphores"
-        }
-        ,
+        },
         {
             "path": "./packages/structures"
         },

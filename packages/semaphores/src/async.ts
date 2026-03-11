@@ -1,4 +1,4 @@
-import { ReleaseFunction, VarLock, Lock, Semaphore } from "./interfaces";
+import type { ReleaseFunction, VarLock, Lock, Semaphore } from "./interfaces";
 
 export class AsyncSemaphore implements Semaphore {
     private count: number;
@@ -208,4 +208,4 @@ export class AsyncLocker<T> extends AsyncSemaphore {
     }
 }
 
-export * from "./interfaces";
+export type * from "./interfaces";

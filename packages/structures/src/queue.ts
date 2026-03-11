@@ -1,5 +1,5 @@
 import { BinaryHeap } from "./heap";
-import { Queue } from "./interfaces";
+import type { Queue } from "./interfaces";
 import { LinkedList } from "./list";
 
 class QueueNode {

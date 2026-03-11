@@ -1,4 +1,4 @@
-import EventEmitter, { EventCallback } from ".";
+import EventEmitter, { EventCallback } from "./index";
 
 type EventsMap = {
     message: string,

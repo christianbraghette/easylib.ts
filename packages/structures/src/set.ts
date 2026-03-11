@@ -1,4 +1,4 @@
-import { Set as SetInterface } from "./interfaces";
+import type { Set as SetInterface } from "./interfaces";
 import { ArrayList, LinkedList } from "./list";
 
 export class HashSet<T> implements SetInterface<T> {
