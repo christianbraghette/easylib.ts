@@ -66,14 +66,15 @@ export class IndexableIterable<T extends Tuple<any>> implements Iterable<T> {
     constructor(iterable: Iterable<T>) {
         this.#iterable = iterable;
         return new Proxy(this, {
-            get: (target, prop) => {
+            get: (target, prop, receiver) => {
                 if (typeof prop === 'string' && /^\d+$/.test(prop)) {
-                    return function* () {
+                    function* iterator() {
                         for (const entry of iterable)
-                            yield entry[Number(prop)] as T[keyof T & number];
+                            yield entry[Number(prop)] as T[keyof T];
                     }
+                    return iterator();
                 }
-                return Reflect.get(target, prop);
+                return Reflect.get(target, prop, receiver);
             }
         });
     }
@@ -82,7 +83,7 @@ export class IndexableIterable<T extends Tuple<any>> implements Iterable<T> {
         yield* this.#iterable;
     }
 
-    public static from<S extends Tuple<any>>(iterable: Iterable<S>){
+    public static from<S extends Tuple<any>>(iterable: Iterable<S>): IndexableIterable<S> {
         return new this(iterable);
     }
 }

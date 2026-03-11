@@ -55,6 +55,6 @@ export class DataFrame<T extends Record<string, any>> {
         const indexable = new IndexableIterable(iterable);
 
         for (let i = 0; i < columns.length; i++)
-            this.#map.set(columns[i], new Index(indexable[i] as unknown as IndexableIterable<T[keyof T]>))
+            this.#map.set(columns[i], new Index(indexable[i] as any))
     }
 }
