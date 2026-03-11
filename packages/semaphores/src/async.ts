@@ -1,8 +1,9 @@
+import { LinkedList } from "@easylib.ts/structures/list";
 import type { ReleaseFunction, VarLock, Lock, Semaphore } from "./interfaces";
 
 export class AsyncSemaphore implements Semaphore {
     private count: number;
-    private readonly queue = new Array<{ resolve: (release: Lock) => void, reject: (reason: 'reset' | 'error') => void }>();
+    private readonly queue = new LinkedList<{ resolve: (release: Lock) => void, reject: (reason: 'reset' | 'error') => void }>();
 
     public constructor(private _maxCount: number) {
         this.count = _maxCount;
@@ -123,8 +124,12 @@ export class AsyncSemaphore implements Semaphore {
     }
 
     public async run<T>(fn: () => Promise<T> | T): Promise<T> {
-        using release = await this.acquire();
-        return await fn();
+        const release = await this.acquire();
+        try {
+            return await fn();
+        } finally {
+            release.release();
+        }
     }
 
     public async runWithTimeout<T>(fn: () => Promise<T> | T, ms: number): Promise<T> {
@@ -133,8 +138,12 @@ export class AsyncSemaphore implements Semaphore {
         const timer = setTimeout(() => controller.abort(), ms);
 
         try {
-            using lock = await this.acquire(controller.signal);
-            return await fn();
+            const lock = await this.acquire(controller.signal);
+            try {
+                return await fn();
+            } finally {
+                lock.release();
+            }
         } catch (err) {
             if (err instanceof Error && err.message === "Acquire aborted") {
                 throw new Error("Mutex timeout");

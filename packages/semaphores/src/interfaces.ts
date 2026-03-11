@@ -40,7 +40,6 @@ export interface Semaphore {
     acquire(): Promise<Lock>
     acquire(signal: AbortSignal): Promise<Lock>
     acquire(callbackfn: (release: ReleaseFunction) => void): void
-    acquire(callbackfn?: ((release: ReleaseFunction) => void) | AbortSignal): Promise<Lock> | void;
 
     /**
      * Non-blocking version of acquire.

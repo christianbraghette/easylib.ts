@@ -1,3 +1,6 @@
+import { MessagePort } from 'worker_threads';
+import { InputMessage, OutputMessage } from './types';
+
 export interface AtomicNumber {
     readonly MAX: number;
     readonly MIN: number;
@@ -122,7 +125,7 @@ export abstract class AtomicInteger<T extends TypedArray> implements AtomicNumbe
         return this.get();
     }
 
-    [Symbol.toStringTag] = "object AtomicInteger";
+    [Symbol.toStringTag] = "AtomicInteger";
 }
 
 export class AtomicInt8 extends AtomicInteger<Int8Array> {
@@ -145,6 +148,17 @@ export class AtomicInt16 extends AtomicInteger<Int16Array> {
     }
 }
 
+let waiter: any = undefined;
+
+async function sendToWorker(message: InputMessage): Promise<any> {
+    return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (ev) => resolve(ev.data.status);
+
+        waiter.postMessage(message, [channel.port2]);
+    });
+}
+
 export class AtomicInt32 extends AtomicInteger<Int32Array> {
     public readonly MAX = 2147483647;
     public readonly MIN = -2147483648;
@@ -158,15 +172,55 @@ export class AtomicInt32 extends AtomicInteger<Int32Array> {
         return Atomics.wait(this.array, this.index, value, timeout);
     }
 
-    /*public waitAsync(value: number, timeout?: number): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const res = Atomics.wait(this.array, this.index, value, timeout);
-            if (res === 'not-equal' || res === 'timed-out')
-                reject(res);
-            else
-                resolve();
-        });
-    }*/
+    public async waitAsync(value: number, timeout?: number): Promise<"ok" | "not-equal" | "timed-out"> {
+        try {
+            const result = Atomics.waitAsync(this.array, this.index, value, timeout);
+            return result.async ? await result.value : result.value;
+        } catch {
+            throw new Error("Not exist before ES2026");
+            // Inizializza il worker se non esiste
+            /*if (!waiter) {
+                if (typeof window !== 'undefined') {
+                    waiter = new Worker('waiter-browser.js');
+                } else {
+                    const { Worker: NodeWorker } = await import('worker_threads');
+                    waiter = new NodeWorker('./dist/waiter-nodejs.js');
+                    waiter.unref();
+                }
+            }
+
+            return new Promise((resolve, reject) => {
+                const { port1, port2 } = new MessageChannel();
+
+                console.log(port1.onmessage, (port1 as any).once)
+                if (!!port1.onmessage) {
+                    port1.onmessage = (ev) => {
+                        if (ev.data.status === 'error')
+                            reject(new Error(ev.data.error));
+                        else resolve(ev.data.status);
+                        port1.close();
+                    };
+                } else {
+                    (port1 as MessagePort).once('message', (ev: any) => {
+                        console.log(ev)
+                        if (ev.data.status === 'error')
+                            reject(new Error(ev.data.error));
+                        else resolve(ev.data.status);
+                        port1.close();
+                    });
+                }
+
+                const message: InputMessage = {
+                    buffer: this.buffer,
+                    index: this.index,
+                    value,
+                    timeout
+                };
+
+                waiter.postMessage(message, [port2]);
+            });*/
+        }
+    }
 
     public notify(count?: number): number {
         return Atomics.notify(this.array, this.index, count);
@@ -304,7 +358,7 @@ class AtomicNumberConstructor implements AtomicNumber {
         return this.get();
     }
 
-    [Symbol.toStringTag] = "object AtomicNumber";
+    [Symbol.toStringTag] = "AtomicNumber";
 }
 
 export class AtomicNumber {

@@ -1,15 +1,13 @@
 import type { ReleaseFunction, Lock, Semaphore, Mutex } from "./interfaces";
-import type { AtomicNumber } from "@easylib.ts/atomics";
+import { AtomicInt32 } from "@easylib.ts/atomics";
 
-export class AtomicSemaphore implements Semaphore {
+export class ThreadSemaphore implements Semaphore {
 
-    public constructor(private readonly count: AtomicNumber, private readonly waiters: AtomicNumber, private _maxCount: number, initialized = false) {
+    public constructor(private readonly count: AtomicInt32, private _maxCount: number, initialized = false) {
         if (count.MAX < _maxCount + 2)
             throw new Error("maxCount out of bound");
-        if (!initialized) {
+        if (!initialized)
             this.count.set(_maxCount);
-            this.waiters.set(0);
-        }
     }
 
     public get maxCount(): number {
@@ -18,6 +16,7 @@ export class AtomicSemaphore implements Semaphore {
 
     public set maxCount(count: number) {
         this.count.add(count - this.maxCount);
+        this.count.notify(count - this.maxCount);
         this._maxCount = count;
     }
 
@@ -40,15 +39,11 @@ export class AtomicSemaphore implements Semaphore {
                 callbackfn.addEventListener('abort', () => reject(new Error("Acquire aborted")), { once: true })
             }
 
-            this.waiters.add();
-
-            let lock: Lock | undefined;
-            do
-                lock = this.tryAcquire();
-            while (!lock);
-
-            this.waiters.sub();
-            resolve(lock);
+            this.count.waitAsync(this.count.sub()).then(res => {
+                if (res !== 'ok')
+                    return reject(res);
+                return resolve(this.createLock());
+            });
         });
     }
 
@@ -56,14 +51,15 @@ export class AtomicSemaphore implements Semaphore {
         class LockConstructor implements Lock {
             #released: boolean;
 
-            constructor(semaphore: AtomicSemaphore)
-            constructor(semaphore?: AtomicSemaphore, released?: boolean)
-            constructor(semaphore?: AtomicSemaphore, released: boolean = false) {
+            constructor(semaphore: ThreadSemaphore)
+            constructor(semaphore?: ThreadSemaphore, released?: boolean)
+            constructor(semaphore?: ThreadSemaphore, released: boolean = false) {
                 this.#released = released;
                 this.release = semaphore ? () => {
                     if (this.#released) return;
                     this.#released = true;
                     semaphore.count.add();
+                    semaphore.count.notify(1);
                 } : () => {
                     if (this.#released) return;
                     this.#released = true;
@@ -112,12 +108,10 @@ export class AtomicSemaphore implements Semaphore {
 
     public releaseAll(): void {
         this.count.set(this._maxCount + 1);
-        this.waiters.set(0);
     }
 
     public reset(): void {
         this.count.set(this._maxCount + 2);
-        this.waiters.set(0);
     }
 
     public async run<T>(fn: () => Promise<T> | T): Promise<T> {
@@ -151,9 +145,9 @@ export class AtomicSemaphore implements Semaphore {
     }
 }
 
-export class AtomicMutex extends AtomicSemaphore implements Mutex {
-    public constructor(count: AtomicNumber, waiters: AtomicNumber, initialized = false) {
-        super(count, waiters, 1, initialized);
+export class AtomicMutex extends ThreadSemaphore implements Mutex {
+    public constructor(count: AtomicInt32, initialized = false) {
+        super(count, 1, initialized);
     }
 
     public accessor maxCount: 1 = 1;

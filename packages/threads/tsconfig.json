@@ -1,11 +1,6 @@
 {
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
-        "lib": [
-            "ES2022",
-            "ES2024",
-            "DOM"
-        ],
         "types": [
             "node"
         ],
@@ -17,5 +12,10 @@
     ],
     "exclude": [
         "dist"
+    ],
+    "references": [
+        {
+            "path": "../eventemitter"
+        }
     ]
 }

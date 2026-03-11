@@ -39,7 +39,8 @@
     "test": "node ./dist/test.js"
   },
   "dependencies": {
-    "@easylib.ts/atomics": "^1.0.0"
+    "@easylib.ts/atomics": "^1.0.0",
+    "@easylib.ts/structures": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.3"

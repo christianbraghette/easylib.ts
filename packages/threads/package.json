@@ -1,7 +1,7 @@
 {
-  "name": "@easylib.ts/pandas",
+  "name": "@easylib.ts/threads",
   "version": "1.0.0",
-  "description": "Typescript pandas structures",
+  "description": "Typescript threads",
   "keywords": [],
   "homepage": "https://github.com/christianbraghette/easylib.ts#readme",
   "bugs": {
@@ -32,6 +32,9 @@
     "prepare": "tsc",
     "pretest": "tsc",
     "test": "node ./dist/test.js"
+  },
+  "dependencies": {
+    "@easylib.ts/eventemitter": "^1.2.2"
   },
   "devDependencies": {
     "@types/node": "^25.0.3"

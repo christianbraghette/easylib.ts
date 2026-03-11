@@ -6,7 +6,6 @@
   "private": true,
   "scripts": {
     "build": "tsc -b",
-    "prepare": "npm run build",
     "clean": "tsc --build --clean"
   },
   "workspaces": [
@@ -15,5 +14,8 @@
   "keywords": [],
   "author": "Christian Braghette",
   "license": "MIT",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.4.0"
+  }
 }

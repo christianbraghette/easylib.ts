@@ -14,5 +14,13 @@
     ],
     "exclude": [
         "dist"
+    ],
+    "references": [
+        {
+            "path": "../structures"
+        },
+        {
+            "path": "../atomics"
+        }
     ]
 }
