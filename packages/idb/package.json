@@ -26,9 +26,6 @@
     "pretest": "tsc",
     "test": "node ./dist/test.js"
   },
-  "dependencies": {
-    "msgpack": "^1.0.3"
-  },
   "devDependencies": {
     "@types/node": "^25.0.3"
   }

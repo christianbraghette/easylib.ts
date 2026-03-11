@@ -60,9 +60,9 @@ export function openDB<DB extends Record<string, IndexableData>>(name: string, t
  * @param version - Optional database version (defaults to `1`)
  * @returns An `IndexedDB` instance typed to `DB`
  */
-export function openEncryptedDB<DB extends Record<string, IndexableData>>(name: string, tables: (keyof DB)[], version?: number): Database<DB> {
+/*export function openEncryptedDB<DB extends Record<string, IndexableData>>(name: string, tables: (keyof DB)[], version?: number): Database<DB> {
     return new EncryptedIndexedDB(name, tables, version);
-}
+}*/
 
 /**
  * High-level database API returned by `openDB`.
@@ -179,7 +179,7 @@ class IndexedDB<DB extends Record<string, IndexableData>> implements Database<DB
     }
 }
 
-class EncryptedIndexedDB<DB extends Record<string, IndexableData>> extends IndexedDB<DB> {
+/*class EncryptedIndexedDB<DB extends Record<string, IndexableData>> extends IndexedDB<DB> {
     private readonly SALT_SIZE = 16;
     private readonly IV_SIZE = 12; // Standard per AES-GCM
     private readonly ITERATIONS = 100000; // Sicurezza per la password
@@ -293,7 +293,7 @@ class EncryptedIndexedDB<DB extends Record<string, IndexableData>> extends Index
 
         return new TextDecoder().decode(decrypted);
     }
-}
+}*/
 
 /**
  * Lightweight Table wrapper around an `IDBObjectStore`.
