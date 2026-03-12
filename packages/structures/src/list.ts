@@ -1,4 +1,9 @@
-import type { Deque, List } from "./interfaces";
+import type { Deque, FlattenStep, List } from "./interfaces";
+import { Pipeline } from "./pipeline";
+
+interface ConcatIterable<T> extends Iterable<T> {
+    [Symbol.isConcatSpreadable]: boolean;
+}
 
 class DoublyLinkedNode {
     constructor(public next?: DoublyLinkedNode, public prev?: DoublyLinkedNode) { }
@@ -11,31 +16,40 @@ export class ArrayList<T> implements List<T> {
     constructor(iterable?: Iterable<T>);
     constructor(length?: number);
     constructor(args?: Iterable<T> | number) {
-        if (args !== undefined) {
-            if (typeof args === 'number') {
-                this.#items = new Array(args);
-            } else {
-                this.#items = Array.from(args);
-            }
+        if (typeof args === 'number') {
+            this.#items = new Array(args);
+        } else if (args !== undefined) {
+            this.#items = Array.from(args);
         } else {
             this.#items = [];
         }
 
-        return new Proxy(this, {
-            get: (target, prop) => {
-                if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+        const proxy = new Proxy(this, {
+            get: (target, prop, receiver) => {
+                if (typeof prop === 'string' && /^-?\d+$/.test(prop)) {
                     return target.at(Number(prop));
                 }
-                return Reflect.get(target, prop);
+
+                const value = Reflect.get(target, prop, receiver);
+                if (typeof value === 'function') {
+                    return value.bind(target);
+                }
+                return value;
             },
             set: (target, prop, value) => {
-                if (typeof prop === 'string' && /^\d+$/.test(prop)) {
-                    target.#items[Number(prop)] = value;
+                if (typeof prop === 'string' && /^-?\d+$/.test(prop)) {
+                    const index = Number(prop);
+                    let pos = index < 0 ? target.length + index : index;
+
+                    if (pos < 0 || pos >= target.length) return false;
+                    target.#items[pos] = value;
                     return true;
                 }
                 return Reflect.set(target, prop, value);
             }
         });
+
+        return proxy;
     }
 
     public get length(): number {
@@ -89,7 +103,7 @@ export class ArrayList<T> implements List<T> {
         return false;
     }
 
-    public concat(...items: (T | Iterable<T>)[]): ArrayList<T> {
+    public concat(...items: (T | ConcatIterable<T>)[]): ArrayList<T> {
         const result: T[] = [];
 
         for (let i = 0; i < this.#items.length; i++) {
@@ -99,7 +113,7 @@ export class ArrayList<T> implements List<T> {
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
 
-            if (typeof item === 'object' && item !== null && Symbol.iterator in item) {
+            if (typeof item === 'object' && item !== null && Symbol.iterator in item && item[Symbol.isConcatSpreadable] === true) {
                 for (const subItem of item as Iterable<T>) {
                     result.push(subItem);
                 }
@@ -118,9 +132,9 @@ export class ArrayList<T> implements List<T> {
     // ### INDEXABLE METHODS
 
     public at(index: number): T | undefined {
-        /*let target = index < 0 ? this.length + index : index;
-        if (target < 0 || target >= this.length) return undefined;
-        return this.#items[target];*/
+        /*let pos = index < 0 ? this.length + index : index;
+        if (pos < 0 || pos >= this.length) return undefined;
+        return this.#items[pos];*/
         return this.#items.at(index);
     }
 
@@ -205,8 +219,8 @@ export class ArrayList<T> implements List<T> {
         return this.#items.reduceRight((acc, curr, i) => callbackfn(acc, curr, i, this), initialValue);
     }
 
-    public flat<S>(depth: number = 1): ArrayList<S> {
-        /*const result: S[] = [];
+    public flat<D extends number = 1>(depth: D = 1 as D): ArrayList<FlattenStep<T, D>> {
+        /*const result: FlattenStep<T, D>[] = [];
 
         const flatten = (items: any[], currentDepth: number) => {
             for (const item of items) {
@@ -221,8 +235,8 @@ export class ArrayList<T> implements List<T> {
         };
 
         flatten(this.#items, depth);
-        return new ArrayList<S>(result);*/
-        return this.flat(depth);
+        return new ArrayList<FlattenStep<T, D>>(result);*/
+        return new ArrayList<any>(this.#items.flat(depth));
     }
 
     public flatMap<U>(callbackfn: (value: T, index: number, obj: ArrayList<T>) => U | Iterable<U>): ArrayList<U> {
@@ -242,6 +256,14 @@ export class ArrayList<T> implements List<T> {
 
         return new ArrayList<U>(result);
         //return this.#items.flatMap((value, index, array) => callbackfn(value, index, this))
+    }
+
+    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>): ArrayList<U> {
+        return new ArrayList(transformer(this.stream()).sink());
+    }
+
+    public stream(): Pipeline<T> {
+        return new Pipeline(this.values());
     }
 
     public sort(compareFn?: (a: T, b: T) => number): this {
@@ -267,7 +289,11 @@ export class ArrayList<T> implements List<T> {
         return this.values();
     }
 
-    [Symbol.toStringTag]: string = "ArrayList";
+    get [Symbol.toStringTag](): string { return "ArrayList" };
+
+    public static from<S>(iterable: Iterable<S>): ArrayList<S> {
+        return new ArrayList(iterable);
+    }
 }
 
 export class LinkedList<T> implements List<T>, Deque<T> {
@@ -515,13 +541,13 @@ export class LinkedList<T> implements List<T>, Deque<T> {
      * @param items Items or iterables to concatenate.
      * @returns A new LinkedList.
      */
-    public concat(...items: (T | Iterable<T>)[]): LinkedList<T> {
+    public concat(...items: (T | ConcatIterable<T>)[]): LinkedList<T> {
         const self = this;
         const combinedIterable = function* () {
             yield* self;
 
             for (const item of items) {
-                if (typeof item === 'object' && item !== null && Symbol.iterator in item) {
+                if (typeof item === 'object' && item !== null && Symbol.iterator in item && item[Symbol.isConcatSpreadable] === true) {
                     yield* (item as Iterable<T>);
                 } else {
                     yield item as T;
@@ -847,18 +873,18 @@ export class LinkedList<T> implements List<T>, Deque<T> {
     /**
      * Returns a new list with all sub-list elements concatenated into it recursively up to the specified depth.
      */
-    public flat<S>(depth: number = 1): LinkedList<S> {
+    public flat<D extends number = 1>(depth: D = 1 as D): LinkedList<FlattenStep<T, D>> {
         const self = this;
-        const flatten = function* (iterable: Iterable<any>, currentDepth: number): Generator<S> {
+        const flatten = function* (iterable: Iterable<any>, currentDepth: number): Generator<FlattenStep<T, D>> {
             for (const item of iterable) {
                 if (currentDepth > 0 && typeof item === 'object' && item !== null && Symbol.iterator in item) {
                     yield* flatten(item, currentDepth - 1);
                 } else {
-                    yield item as S;
+                    yield item as FlattenStep<T, D>;
                 }
             }
         };
-        return new LinkedList<S>(flatten(self, depth));
+        return new LinkedList<FlattenStep<T, D>>(flatten(self, depth));
     }
 
     /**
@@ -878,6 +904,14 @@ export class LinkedList<T> implements List<T>, Deque<T> {
             }
         };
         return new LinkedList<U>(flatMappedGenerator());
+    }
+
+    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>): LinkedList<U> {
+        return new LinkedList(transformer(this.stream()).sink());
+    }
+
+    public stream(): Pipeline<T> {
+        return new Pipeline(this.values());
     }
 
     /**
@@ -1105,5 +1139,9 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         return this.values();
     }
 
-    [Symbol.toStringTag]: string = "LinkedList";
+    get [Symbol.toStringTag](): string { return "LinkedList" };
+
+    public static from<S>(iterable: Iterable<S>): LinkedList<S> {
+        return new LinkedList(iterable);
+    }
 }

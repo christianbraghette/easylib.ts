@@ -1,5 +1,5 @@
 import { BinaryHeap } from "./heap";
-import type { Queue } from "./interfaces";
+import type { FlattenStep, Queue } from "./interfaces";
 import { LinkedList } from "./list";
 
 class QueueNode {
@@ -213,7 +213,7 @@ export class LinkedQueue<T> implements Queue<T> {
         return this.values();
     }
 
-    [Symbol.toStringTag] = "QueueStack";
+    get [Symbol.toStringTag](): string { return "QueueStack"; }
 }
 
 class PriorityQueueNode {
@@ -500,8 +500,8 @@ export class PriorityQueue<T> implements Queue<T> {
      * Returns a new PriorityQueue with all sub-iterable elements concatenated into it recursively up to the specified depth.
      * @param depth The maximum recursion depth. Defaults to 1.
      */
-    public flat<S>(depth: number = 1): PriorityQueue<S> {
-        const newQueue = new PriorityQueue<S>();
+    public flat<D extends number = 1>(depth: D = 1 as D): PriorityQueue<FlattenStep<T, D>> {
+        const newQueue = new PriorityQueue<FlattenStep<T, D>>();
 
         const flatten = (item: any, currentPrio: number, currentDepth: number) => {
             if (currentDepth > 0 && item != null && typeof item[Symbol.iterator] === 'function') {
@@ -509,7 +509,7 @@ export class PriorityQueue<T> implements Queue<T> {
                     flatten(subItem, currentPrio, currentDepth - 1);
                 }
             } else {
-                newQueue.push(item as S, currentPrio);
+                newQueue.push(item as FlattenStep<T, D>, currentPrio);
             }
         };
 
@@ -548,5 +548,5 @@ export class PriorityQueue<T> implements Queue<T> {
         return this.values();
     }
 
-    [Symbol.toStringTag]: string = "PriorityQueue";
+    get [Symbol.toStringTag](): string { return "PriorityQueue"; }
 }

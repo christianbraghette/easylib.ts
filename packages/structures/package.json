@@ -34,6 +34,31 @@
       "import": "./dist/map.js",
       "require": "./dist/map.js",
       "types": "./dist/map.d.ts"
+    },
+    "./queue": {
+      "import": "./dist/queue.js",
+      "require": "./dist/queue.js",
+      "types": "./dist/queue.d.ts"
+    },
+    "./set": {
+      "import": "./dist/set.js",
+      "require": "./dist/set.js",
+      "types": "./dist/set.d.ts"
+    },
+    "./sorter": {
+      "import": "./dist/sorter.js",
+      "require": "./dist/sorter.js",
+      "types": "./dist/sorter.d.ts"
+    },
+    "./stack": {
+      "import": "./dist/stack.js",
+      "require": "./dist/stack.js",
+      "types": "./dist/stack.d.ts"
+    },
+    "./pipeline": {
+      "import": "./dist/pipeline.js",
+      "require": "./dist/pipeline.js",
+      "types": "./dist/pipeline.d.ts"
     }
   },
   "main": "./dist/index.js",

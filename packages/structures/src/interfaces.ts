@@ -1,6 +1,19 @@
+import type { Pipeline } from "./pipeline";
+
+type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...0[]];
+
+export type FlattenStep<T, D extends number> =
+    D extends 0
+    ?
+    T : T extends Iterable<infer U>
+    ?
+    T extends string
+    ?
+    T : FlattenStep<U, Prev[D]> : T;
+
 export interface Collection<K, V> {
     clear(): void;
-    
+
     keys(): IterableIterator<K>;
     values(): IterableIterator<V>;
     entries(): IterableIterator<[K, V]>;
@@ -75,13 +88,23 @@ export interface LinearFunctionals<K, V> extends Functionals<K, V> {
     map<U>(callbackfn: (value: V, key: K, obj: Collection<K, V>) => U): Linear<K, U>;
     findLast<S extends V>(predicate: (value: V, key: K, obj: Linear<K, V>) => boolean | undefined | null): S | undefined;
     reduceRight<U>(callbackfn: (previousValue: U, currentValue: V, currentKey: K, obj: Linear<K, V>) => U, initialValue: U): U;
-    flat<S>(depth?: number): Linear<K, S>;
+    flat<D extends number = 1>(depth?: D): Linear<K, FlattenStep<V, D>>;
     flatMap<U>(callbackfn: (value: V, key: K, obj: Linear<K, V>) => U | Iterable<U>): Linear<K, U>;
 }
 
 export interface IndexableFunctionals<V> extends LinearFunctionals<number, V> {
     findIndex(predicate: (value: V, index: number, obj: Indexable<V>) => boolean | undefined | null): number;
     findLastIndex(predicate: (value: V, index: number, obj: Indexable<V>) => boolean | undefined | null): number;
+}
+
+export interface VectorizedEntries<K, V> {
+    pipe<U>(transformer: (source: Pipeline<[K, V]>) => Pipeline<[K, U]>): Collection<K, U>;
+    stream(): Pipeline<[K, V]>;
+}
+
+export interface VectorizedValues<V> {
+    pipe<U>(transformer: (source: Pipeline<V>) => Pipeline<U>): Collection<any, U>;
+    stream(): Pipeline<V>;
 }
 
 export interface Stack<T> extends LIFO<T>, Linear<any, T> {
@@ -97,12 +120,12 @@ export interface Deque<T> extends Queue<T>, RLIFO<T> {
     last(): T | undefined;
 }
 
-export interface List<T> extends FIFO<T>, RFIFO<T>, Indexable<T>, IndexableFunctionals<T> {
+export interface List<T> extends FIFO<T>, RFIFO<T>, Indexable<T>, IndexableFunctionals<T>, VectorizedValues<T> {
     push(...items: T[]): number;
     unshift(...items: T[]): number;
 }
 
-export interface Map<K, V> extends NonLinear<K, V>, Functionals<K, V> {
+export interface Map<K, V> extends NonLinear<K, V>, Functionals<K, V>, VectorizedEntries<K, V> {
     set(key: K, value: V): this;
     get(key: K): V | undefined;
 
@@ -111,7 +134,7 @@ export interface Map<K, V> extends NonLinear<K, V>, Functionals<K, V> {
     [Symbol.iterator](): IterableIterator<[K, V]>;
 }
 
-export interface Set<V> extends NonLinear<V, V>, Functionals<V, V> {
+export interface Set<V> extends NonLinear<V, V>, Functionals<V, V>, VectorizedValues<V> {
     add(value: V): this;
 
     union(other: Set<V>): Set<V>

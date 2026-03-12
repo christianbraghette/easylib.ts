@@ -1,5 +1,6 @@
 import type { Map as MapInterface } from "./interfaces";
 import { ArrayList, LinkedList } from "./list";
+import { Pipeline } from "./pipeline";
 
 export class HashMap<K, V> implements MapInterface<K, V> {
     #map: Map<K, V>;
@@ -147,6 +148,14 @@ export class HashMap<K, V> implements MapInterface<K, V> {
         return undefined;
     }
 
+    public pipe<U>(transformer: (source: Pipeline<[K, V]>) => Pipeline<[K, U]>): HashMap<K, U> {
+        return new HashMap(transformer(this.stream()).sink());
+    }
+
+    public stream(): Pipeline<[K, V]> {
+        return new Pipeline(this.entries());
+    }
+
     public sort(compareFn: (a: [K, V], b: [K, V]) => number): this {
         const entries = new ArrayList(this.#map.entries());
 
@@ -189,7 +198,11 @@ export class HashMap<K, V> implements MapInterface<K, V> {
         return this.entries();
     }
 
-    [Symbol.toStringTag]: string = "HashMap";
+    get [Symbol.toStringTag](): string { return "HashMap" };
+
+    public static from<R, S>(iterable: Iterable<[R, S]>): HashMap<R, S> {
+        return new HashMap(iterable);
+    }
 }
 
 enum Color { RED, BLACK }
@@ -570,6 +583,14 @@ export class TreeMap<K, V> implements MapInterface<K, V> {
         return undefined;
     }
 
+    public pipe<U>(transformer: (source: Pipeline<[K, V]>) => Pipeline<[K, U]>, compareFn?: (a: K, b: K) => number): TreeMap<K, U> {
+        return new TreeMap<K, U>(compareFn ?? this.compareFn, transformer(this.stream()).sink());
+    }
+
+    public stream(): Pipeline<[K, V]> {
+        return new Pipeline(this.entries());
+    }
+
     /**
      * Returns a new Iterator object that contains the keys for each element in the map in sorted order.
      */
@@ -615,5 +636,9 @@ export class TreeMap<K, V> implements MapInterface<K, V> {
     /**
      * Tag used by Object.prototype.toString.
      */
-    [Symbol.toStringTag]: string = "TreeMap";
+    get [Symbol.toStringTag](): string { return "TreeMap" };
+
+    public static from<R, S>(iterable: Iterable<[R, S]>): TreeMap<R, S> {
+        return new TreeMap((a, b) => a == b ? 0 : a < b ? -1 : 1, iterable);
+    }
 }

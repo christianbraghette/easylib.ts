@@ -125,7 +125,7 @@ export abstract class AtomicInteger<T extends TypedArray> implements AtomicNumbe
         return this.get();
     }
 
-    [Symbol.toStringTag] = "AtomicInteger";
+    get [Symbol.toStringTag](): string { return "AtomicInteger" };
 }
 
 export class AtomicInt8 extends AtomicInteger<Int8Array> {
@@ -358,7 +358,7 @@ class AtomicNumberConstructor implements AtomicNumber {
         return this.get();
     }
 
-    [Symbol.toStringTag] = "AtomicNumber";
+    get [Symbol.toStringTag](): string { return "AtomicNumber"; }
 }
 
 export class AtomicNumber {

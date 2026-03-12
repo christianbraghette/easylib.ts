@@ -32,7 +32,7 @@ export class LinkedStack<T> implements Stack<T> {
             const newNode = new StackNode(this.#head);
             if (this.#head) this.#head.prev = newNode;
             this.#head = newNode;
-            
+
             this.#nodes.set(newNode, item);
             this.#counts.set(item, (this.#counts.get(item) ?? 0) + 1);
             this.#length++;
@@ -201,5 +201,5 @@ export class LinkedStack<T> implements Stack<T> {
         return this.values();
     }
 
-    [Symbol.toStringTag] = "LinkedStack";
+    get [Symbol.toStringTag](): string { return "LinkedStack"; }
 }

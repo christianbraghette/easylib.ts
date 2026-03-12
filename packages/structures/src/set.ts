@@ -1,5 +1,6 @@
 import type { Set as SetInterface } from "./interfaces";
 import { ArrayList, LinkedList } from "./list";
+import { Pipeline } from "./pipeline";
 
 export class HashSet<T> implements SetInterface<T> {
     #set: Set<T>;
@@ -148,6 +149,14 @@ export class HashSet<T> implements SetInterface<T> {
         return undefined;
     }
 
+    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>): HashSet<U> {
+        return new HashSet(transformer(this.stream()).sink());
+    }
+
+    public stream(): Pipeline<T> {
+        return new Pipeline(this.values());
+    }
+
     public sort(compareFn: (a: T, b: T) => number): this {
         const entries = new ArrayList(this.#set.values());
 
@@ -235,7 +244,11 @@ export class HashSet<T> implements SetInterface<T> {
         return this.#set.values();
     }
 
-    [Symbol.toStringTag]: string = "HashSet";
+    get [Symbol.toStringTag](): string { return "HashSet"; }
+
+    public static from<S>(iterable: Iterable<S>): HashSet<S> {
+        return new HashSet(iterable);
+    }
 }
 
 enum Color {
@@ -606,6 +619,14 @@ export class TreeSet<T> implements SetInterface<T> {
         return undefined;
     }
 
+    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>, compareFn?: (a: U, b: U) => number): TreeSet<U> {
+        return new TreeSet(compareFn ?? ((a, b) => a == b ? 0 : a < b ? -1 : 1), transformer(this.stream()).sink());
+    }
+
+    public stream(): Pipeline<T> {
+        return new Pipeline(this.values());
+    }
+
     /**
      * Combines the current set with another iterable to create a new sorted set.
      */
@@ -686,5 +707,9 @@ export class TreeSet<T> implements SetInterface<T> {
         return this.values();
     }
 
-    [Symbol.toStringTag]: string = "TreeSet";
+    get [Symbol.toStringTag](): string { return "TreeSet"; }
+
+    public static from<S>(iterable: Iterable<S>): TreeSet<S> {
+        return new TreeSet((a, b) => a == b ? 0 : a < b ? -1 : 1, iterable);
+    }
 }
