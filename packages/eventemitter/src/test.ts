@@ -35,5 +35,5 @@ setTimeout(async () => {
 
 setTimeout(() => {
     e.emit('data', 1)
-    e.emit('close')
+    e.emit('close', undefined)
 }, 1000);

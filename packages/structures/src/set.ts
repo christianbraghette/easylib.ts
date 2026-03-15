@@ -1,8 +1,8 @@
-import type { Set as SetInterface } from "./interfaces";
+import { Collection, type Set as SetInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
-import { Pipeline } from "./pipeline";
+import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
-export class HashSet<T> implements SetInterface<T> {
+export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
     #set: Set<T>;
 
     /**
@@ -10,6 +10,7 @@ export class HashSet<T> implements SetInterface<T> {
      * @param iterable An optional iterable of elements to initialize the set with.
      */
     constructor(iterable?: Iterable<T>) {
+        super();
         this.#set = new Set(iterable);
     }
 
@@ -149,12 +150,13 @@ export class HashSet<T> implements SetInterface<T> {
         return undefined;
     }
 
-    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>): HashSet<U> {
-        return new HashSet(transformer(this.stream()).sink());
-    }
-
-    public stream(): Pipeline<T> {
-        return new Pipeline(this.values());
+    public pipe(): Pipeline<T, 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): HashSet<U>
+    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): HashSet<U> | Pipeline<T, 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.values())
+        if (!transformer)
+            return pipeline;
+        return new HashSet(transformer(pipeline).sink());
     }
 
     public sort(compareFn: (a: T, b: T) => number): this {
@@ -244,6 +246,14 @@ export class HashSet<T> implements SetInterface<T> {
         return this.#set.values();
     }
 
+    toJSON(): T[] {
+        const array = new Array(this.#set.size);
+        let i = 0;
+        for (const entry of this)
+            array[i++] = entry;
+        return array;
+    }
+
     get [Symbol.toStringTag](): string { return "HashSet"; }
 
     public static from<S>(iterable: Iterable<S>): HashSet<S> {
@@ -263,7 +273,7 @@ class BSTNode {
     public color: Color = Color.RED;
 }
 
-export class TreeSet<T> implements SetInterface<T> {
+export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
     #size: number = 0;
     #data = new WeakMap<BSTNode, T>();
     #root?: BSTNode;
@@ -275,6 +285,7 @@ export class TreeSet<T> implements SetInterface<T> {
      * @param iterable An optional iterable of elements to initialize the set with.
      */
     constructor(private readonly compareFn: (a: T, b: T) => number, iterable?: Iterable<T>) {
+        super();
         for (const data of iterable ?? [])
             this.add(data);
     }
@@ -619,12 +630,13 @@ export class TreeSet<T> implements SetInterface<T> {
         return undefined;
     }
 
-    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>, compareFn?: (a: U, b: U) => number): TreeSet<U> {
-        return new TreeSet(compareFn ?? ((a, b) => a == b ? 0 : a < b ? -1 : 1), transformer(this.stream()).sink());
-    }
-
-    public stream(): Pipeline<T> {
-        return new Pipeline(this.values());
+    public pipe(): Pipeline<T, 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>, compareFn?: (a: U, b: U) => number): TreeSet<U>
+    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>, compareFn?: (a: U, b: U) => number): TreeSet<U> | Pipeline<T, 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.values())
+        if (!transformer)
+            return pipeline;
+        return new TreeSet(compareFn ?? ((a, b) => a == b ? 0 : a < b ? -1 : 1), transformer(pipeline).sink());
     }
 
     /**
@@ -705,6 +717,14 @@ export class TreeSet<T> implements SetInterface<T> {
      */
     [Symbol.iterator](): IterableIterator<T> {
         return this.values();
+    }
+
+    toJSON(): T[] {
+        const array = new Array(this.#size);
+        let i = 0;
+        for (const entry of this)
+            array[i++] = entry;
+        return array;
     }
 
     get [Symbol.toStringTag](): string { return "TreeSet"; }

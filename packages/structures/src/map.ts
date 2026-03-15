@@ -1,14 +1,15 @@
-import type { Map as MapInterface } from "./interfaces";
+import { Collection, type Map as MapInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
-import { Pipeline } from "./pipeline";
+import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
-export class HashMap<K, V> implements MapInterface<K, V> {
+export class HashMap<K, V> extends Collection<K, V> implements MapInterface<K, V> {
     #map: Map<K, V>;
 
     /**
      * @param iterable An optional iterable of key-value pairs to initialize the map.
      */
     constructor(iterable?: Iterable<[K, V]>) {
+        super()
         this.#map = new Map(iterable);
     }
 
@@ -148,12 +149,13 @@ export class HashMap<K, V> implements MapInterface<K, V> {
         return undefined;
     }
 
-    public pipe<U>(transformer: (source: Pipeline<[K, V]>) => Pipeline<[K, U]>): HashMap<K, U> {
-        return new HashMap(transformer(this.stream()).sink());
-    }
-
-    public stream(): Pipeline<[K, V]> {
-        return new Pipeline(this.entries());
+    public pipe(): Pipeline<[K, V], 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<[K, V], 'sync'>) => Pipeline<[K, U], 'sync'>): HashMap<K, U>
+    public pipe<U>(transformer?: (source: Pipeline<[K, V], 'sync'>) => Pipeline<[K, U], 'sync'>): HashMap<K, U> | Pipeline<[K, V], 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.entries())
+        if (!transformer)
+            return pipeline;
+        return new HashMap(transformer(pipeline).sink());
     }
 
     public sort(compareFn: (a: [K, V], b: [K, V]) => number): this {
@@ -198,6 +200,14 @@ export class HashMap<K, V> implements MapInterface<K, V> {
         return this.entries();
     }
 
+    toJSON(): [K, V][] {
+        const array = new Array<[K, V]>(this.#map.size);
+        let i = 0;
+        for (const entry of this)
+            array[i++] = entry;
+        return array;
+    }
+
     get [Symbol.toStringTag](): string { return "HashMap" };
 
     public static from<R, S>(iterable: Iterable<[R, S]>): HashMap<R, S> {
@@ -214,7 +224,7 @@ class BSTNode {
     public color: Color = Color.RED;
 }
 
-export class TreeMap<K, V> implements MapInterface<K, V> {
+export class TreeMap<K, V> extends Collection<K, V> implements MapInterface<K, V> {
     #size: number = 0;
     #values = new WeakMap<BSTNode, V>();
     #keys = new WeakMap<BSTNode, K>();
@@ -227,6 +237,7 @@ export class TreeMap<K, V> implements MapInterface<K, V> {
      * @param iterable An optional iterable (e.g., an Array of [key, value] pairs) to initialize the map.
      */
     constructor(private readonly compareFn: (a: K, b: K) => number, iterable?: Iterable<[K, V]>) {
+        super()
         for (const [key, value] of iterable ?? [])
             this.set(key, value);
     }
@@ -583,12 +594,13 @@ export class TreeMap<K, V> implements MapInterface<K, V> {
         return undefined;
     }
 
-    public pipe<U>(transformer: (source: Pipeline<[K, V]>) => Pipeline<[K, U]>, compareFn?: (a: K, b: K) => number): TreeMap<K, U> {
-        return new TreeMap<K, U>(compareFn ?? this.compareFn, transformer(this.stream()).sink());
-    }
-
-    public stream(): Pipeline<[K, V]> {
-        return new Pipeline(this.entries());
+    public pipe(): Pipeline<[K, V], 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<[K, V], 'sync'>) => Pipeline<[K, U], 'sync'>): TreeMap<K, U>
+    public pipe<U>(transformer?: (source: Pipeline<[K, V], 'sync'>) => Pipeline<[K, U], 'sync'>): TreeMap<K, U> | Pipeline<[K, V], 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.entries())
+        if (!transformer)
+            return pipeline;
+        return new TreeMap(this.compareFn, transformer(pipeline).sink());
     }
 
     /**
@@ -631,6 +643,14 @@ export class TreeMap<K, V> implements MapInterface<K, V> {
      */
     [Symbol.iterator](): IterableIterator<[K, V]> {
         return this.entries();
+    }
+
+    toJSON(): [K, V][] {
+        const array = new Array<[K, V]>(this.#size);
+        let i = 0;
+        for (const entry of this)
+            array[i++] = entry;
+        return array;
     }
 
     /**

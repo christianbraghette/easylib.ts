@@ -1,9 +1,79 @@
-import { LinkedList } from "@easylib.ts/structures/list";
 import type { ReleaseFunction, VarLock, Lock, Semaphore } from "./interfaces";
+
+class QueueNode {
+    constructor(public next?: QueueNode, public prev?: QueueNode) { }
+}
+
+class Queue<T> {
+    #nodes = new WeakMap<QueueNode, T>();
+    #values = new Map<T, QueueNode>();
+    #head?: QueueNode;
+    #tail?: QueueNode;
+    #length = 0;
+
+    get length(): number {
+        return this.#length;
+    }
+
+    public push(...items: T[]): number {
+        for (const item of items) {
+            const newNode = new QueueNode();
+            this.#nodes.set(newNode, item);
+
+            if (!this.#head) {
+                this.#head = newNode;
+                this.#tail = newNode;
+            } else {
+                newNode.next = this.#head;
+                this.#head.prev = newNode;
+                this.#head = newNode;
+            }
+
+            this.#values.set(item, newNode);
+            this.#length++;
+        }
+        return this.#length;
+    }
+
+    public shift(): T | undefined {
+        if (!this.#tail) return undefined;
+
+        const node = this.#tail;
+        const value = this.#nodes.get(node)!;
+
+        this.#tail = node.prev;
+        if (this.#tail) this.#tail.next = undefined;
+        else this.#head = undefined;
+
+        node.prev = undefined;
+        this.#nodes.delete(node);
+        this.#values.delete(value);
+        this.#length--;
+
+        return value;
+    }
+
+    public remove(value: T): boolean {
+        const node = this.#values.get(value);
+
+        if (!node) return false;
+
+        if (node.prev) node.prev.next = node.next;
+        else this.#head = node.next;
+
+        if (node.next) node.next.prev = node.prev;
+        else this.#tail = node.prev;
+
+        this.#nodes.delete(node);
+        this.#values.delete(value);
+        this.#length--;
+        return true;
+    }
+}
 
 export class AsyncSemaphore implements Semaphore {
     private count: number;
-    private readonly queue = new LinkedList<{ resolve: (release: Lock) => void, reject: (reason: 'reset' | 'error') => void }>();
+    private readonly queue = new Queue<{ resolve: (release: Lock) => void, reject: (reason: 'reset' | 'error') => void }>();
 
     public constructor(private _maxCount: number) {
         this.count = _maxCount;
@@ -39,9 +109,7 @@ export class AsyncSemaphore implements Semaphore {
                     return reject(new Error("Acquire aborted"));
 
                 let handler = () => {
-                    const index = this.queue.indexOf(entry);
-                    if (index > -1)
-                        this.queue.splice(index, 1);
+                    this.queue.remove(entry);
                     reject(new Error("Acquire aborted"));
                 }
 

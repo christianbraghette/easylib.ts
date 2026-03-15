@@ -14,27 +14,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-
 /** */
-type EventType = string | number;
-
-type EmitArgs<T> = T extends void | undefined ? [] : [data: T];
-
-const EventsMapSymbol = Symbol("EventsMap");
-
-/**
- * The callback invoked when an event of type `Event` is emitted.
- *
- * The callback receives two arguments:
- * - `data`: the payload for the emitted event (type depends on the event key)
- * - `emitter`: the `EventEmitter` instance that emitted the event
- *
- * @template Event The event key type (keyof the emitter's `EventsMap`).
- * @template Emitter The concrete `EventEmitter` type instance.
- * @param data The event payload for the invoked callback.
- * @param emitter The `EventEmitter` instance emitting the event.
- */
-export type EventCallback<Event extends keyof Emitter[typeof EventsMapSymbol], Emitter extends EventEmitter<any>> = <EventData extends Emitter[typeof EventsMapSymbol][Event]>(data: EventData, emitter: Emitter) => void;
+type EventCallback<Event extends keyof EventsMap, EventsMap extends Record<string | number, any>> = (data: EventsMap[Event], emitter: EventEmitter<EventsMap>) => void;
 
 /**
  * Lightweight EventEmitter implementation for TypeScript.
@@ -57,12 +38,11 @@ export type EventCallback<Event extends keyof Emitter[typeof EventsMapSymbol], E
  *
  * @template EventsMap The mapping of event keys to payload types.
  */
-export class EventEmitter<EventsMap extends Record<EventType, any>> {
-    declare [EventsMapSymbol]: EventsMap;
+export class EventEmitter<EventsMap extends Record<string | number, any>> {
     // Holds reject functions for pending `wait()` promises so they can be rejected on destroy
     #waiters = new Set<(reason?: any) => void>()
     // Map from event key -> Set of listener callbacks
-    #calls = new Map<keyof EventsMap, Set<EventCallback<keyof EventsMap, this>>>();
+    #calls = new Map<keyof EventsMap, Set<EventCallback<any, EventsMap>>>();
     // Active timer IDs created by `wait()` so they can be cleared on destroy
     #timeouts = new Set<ReturnType<typeof setTimeout>>();
 
@@ -72,7 +52,7 @@ export class EventEmitter<EventsMap extends Record<EventType, any>> {
     * @param type The event key to listen for.
     * @param callbackFn The callback invoked with `(data, emitter)` when the event is emitted.
      */
-    public on<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
+    public on<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, EventsMap>): void {
         if (!this.#calls.has(type))
             this.#calls.set(type, new Set());
         this.#calls.get(type)?.add(callbackFn);
@@ -85,8 +65,8 @@ export class EventEmitter<EventsMap extends Record<EventType, any>> {
     * @param type The event key to listen for once.
     * @param callbackFn The callback invoked once with `(data, emitter)`.
      */
-    public once<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
-        const wrapper: EventCallback<Event, this> = (event) => {
+    public once<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, EventsMap>): void {
+        const wrapper: EventCallback<Event, EventsMap> = (event) => {
             callbackFn(event, this);
             this.off(type, wrapper);
         };
@@ -100,7 +80,7 @@ export class EventEmitter<EventsMap extends Record<EventType, any>> {
      * @param type The event key whose listener should be removed.
      * @param callbackFn The callback function to unregister.
      */
-    public off<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
+    public off<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, EventsMap>): void {
         this.#calls.get(type)?.delete(callbackFn);
     }
 
@@ -112,9 +92,9 @@ export class EventEmitter<EventsMap extends Record<EventType, any>> {
      * @param type The event key to emit.
      * @param data The payload associated with the event.
      */
-    public emit<Event extends keyof EventsMap>(type: Event, ...args: EmitArgs<EventsMap[Event]>): void {
+    public emit<Event extends keyof EventsMap>(type: Event, data: EventsMap[Event]): void {
         for (const callFn of this.#calls.get(type) ?? [])
-            callFn(args[0], this);
+            callFn(data, this);
     }
 
     /**

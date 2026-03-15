@@ -1,4 +1,5 @@
-import { Iterables, Tuple } from "./index";
+import { Tuple } from "./index";
+import { Iterables } from "./iterables";
 import { HashMap, } from "./map";
 import { Series } from "./series";
 

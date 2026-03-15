@@ -1,21 +1,19 @@
-import type { Deque, FlattenStep, List } from "./interfaces";
-import { Pipeline } from "./pipeline";
-
-interface ConcatIterable<T> extends Iterable<T> {
-    [Symbol.isConcatSpreadable]: boolean;
-}
+import { FlattenStep } from ".";
+import { Collection, ConcatIterable, Deque, List } from "./collections";
+import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
 class DoublyLinkedNode {
     constructor(public next?: DoublyLinkedNode, public prev?: DoublyLinkedNode) { }
 }
 
-export class ArrayList<T> implements List<T> {
+export class ArrayList<T> extends Collection<number, T> implements List<T> {
     [key: number]: T;
     #items: T[];
 
     constructor(iterable?: Iterable<T>);
     constructor(length?: number);
     constructor(args?: Iterable<T> | number) {
+        super();
         if (typeof args === 'number') {
             this.#items = new Array(args);
         } else if (args !== undefined) {
@@ -91,7 +89,7 @@ export class ArrayList<T> implements List<T> {
     }
 
     public includes(searchElement: T, fromIndex?: number): boolean {
-        return this.#items.indexOf(searchElement, fromIndex) > -1;
+        return this.#items.includes(searchElement, fromIndex);
     }
 
     public remove(value: T): boolean {
@@ -132,9 +130,6 @@ export class ArrayList<T> implements List<T> {
     // ### INDEXABLE METHODS
 
     public at(index: number): T | undefined {
-        /*let pos = index < 0 ? this.length + index : index;
-        if (pos < 0 || pos >= this.length) return undefined;
-        return this.#items[pos];*/
         return this.#items.at(index);
     }
 
@@ -151,10 +146,7 @@ export class ArrayList<T> implements List<T> {
     }
 
     public splice(start: number, deleteCount?: number, ...items: T[]): ArrayList<T> {
-        const removed = deleteCount === undefined
-            ? this.#items.splice(start)
-            : this.#items.splice(start, deleteCount, ...items);
-        return new ArrayList<T>(removed);
+        return new ArrayList<T>(this.#items.splice(start, deleteCount ?? (this.#items.length - start), ...items));
     }
 
     public copyWithin(target: number, start: number, end?: number): this {
@@ -220,22 +212,6 @@ export class ArrayList<T> implements List<T> {
     }
 
     public flat<D extends number = 1>(depth: D = 1 as D): ArrayList<FlattenStep<T, D>> {
-        /*const result: FlattenStep<T, D>[] = [];
-
-        const flatten = (items: any[], currentDepth: number) => {
-            for (const item of items) {
-                if (currentDepth > 0 && Array.isArray(item)) {
-                    flatten(item, currentDepth - 1);
-                } else if (currentDepth > 0 && item !== null && typeof item === 'object' && Symbol.iterator in item) {
-                    flatten(Array.from(item), currentDepth - 1);
-                } else {
-                    result.push(item);
-                }
-            }
-        };
-
-        flatten(this.#items, depth);
-        return new ArrayList<FlattenStep<T, D>>(result);*/
         return new ArrayList<any>(this.#items.flat(depth));
     }
 
@@ -255,15 +231,15 @@ export class ArrayList<T> implements List<T> {
         }
 
         return new ArrayList<U>(result);
-        //return this.#items.flatMap((value, index, array) => callbackfn(value, index, this))
     }
 
-    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>): ArrayList<U> {
-        return new ArrayList(transformer(this.stream()).sink());
-    }
-
-    public stream(): Pipeline<T> {
-        return new Pipeline(this.values());
+    public pipe(): Pipeline<T, 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): ArrayList<U>
+    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): ArrayList<U> | Pipeline<T, 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.values())
+        if (!transformer)
+            return pipeline;
+        return new ArrayList(transformer(pipeline).sink());
     }
 
     public sort(compareFn?: (a: T, b: T) => number): this {
@@ -289,6 +265,14 @@ export class ArrayList<T> implements List<T> {
         return this.values();
     }
 
+    toString(): string {
+        return this.join();
+    }
+
+    toJSON(): T[] {
+        return this.#items.slice();
+    }
+
     get [Symbol.toStringTag](): string { return "ArrayList" };
 
     public static from<S>(iterable: Iterable<S>): ArrayList<S> {
@@ -296,7 +280,7 @@ export class ArrayList<T> implements List<T> {
     }
 }
 
-export class LinkedList<T> implements List<T>, Deque<T> {
+export class LinkedList<T> extends Collection<number, T> implements List<T>, Deque<T> {
     #data = new WeakMap<DoublyLinkedNode, T>();
     #next?: DoublyLinkedNode;
     #prev?: DoublyLinkedNode;
@@ -308,6 +292,7 @@ export class LinkedList<T> implements List<T>, Deque<T> {
      * @param iterable An iterable object to initialize the list with.
      */
     constructor(iterable?: Iterable<T>) {
+        super();
         for (const item of iterable ?? [])
             this.push(item);
     }
@@ -694,23 +679,27 @@ export class LinkedList<T> implements List<T>, Deque<T> {
             const newNode = new DoublyLinkedNode();
             this.#data.set(newNode, item);
 
-            const beforeNode = cursor ? this.getPrev(cursor) : this.tail;
-
-            if (!beforeNode) {
-                this.setNext(newNode, this.head);
-                if (this.head) this.setPrev(this.head, newNode);
-                this.head = newNode;
-                if (!this.tail) this.tail = newNode;
-            } else {
-                const afterNode = this.getNext(beforeNode);
-                this.setNext(beforeNode, newNode);
-                this.setPrev(newNode, beforeNode);
-
-                if (afterNode) {
-                    this.setNext(newNode, afterNode);
-                    this.setPrev(afterNode, newNode);
-                } else {
+            if (!cursor) {
+                const beforeNode = this.tail;
+                if (!beforeNode) {
+                    this.head = newNode;
                     this.tail = newNode;
+                } else {
+                    this.setNext(beforeNode, newNode);
+                    this.setPrev(newNode, beforeNode);
+                    this.tail = newNode;
+                }
+            } else {
+                const beforeNode = this.getPrev(cursor);
+                if (!beforeNode) {
+                    this.setNext(newNode, cursor);
+                    this.setPrev(cursor, newNode);
+                    this.head = newNode;
+                } else {
+                    this.setNext(beforeNode, newNode);
+                    this.setPrev(newNode, beforeNode);
+                    this.setNext(newNode, cursor);
+                    this.setPrev(cursor, newNode);
                 }
             }
             this.#length++;
@@ -906,12 +895,13 @@ export class LinkedList<T> implements List<T>, Deque<T> {
         return new LinkedList<U>(flatMappedGenerator());
     }
 
-    public pipe<U>(transformer: (source: Pipeline<T>) => Pipeline<U>): LinkedList<U> {
-        return new LinkedList(transformer(this.stream()).sink());
-    }
-
-    public stream(): Pipeline<T> {
-        return new Pipeline(this.values());
+    public pipe(): Pipeline<T, 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedList<U>
+    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedList<U> | Pipeline<T, 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.values())
+        if (!transformer)
+            return pipeline;
+        return new LinkedList(transformer(pipeline).sink());
     }
 
     /**
@@ -921,83 +911,106 @@ export class LinkedList<T> implements List<T>, Deque<T> {
     public sort(compareFn?: (a: T, b: T) => number): this {
         if (this.length <= 1) return this;
 
-        const compare = compareFn ?? ((a, b) => String(a) < String(b) ? -1 : 1);
+        const compare = compareFn ?? ((a, b) => a == b ? 0 : a < b ? -1 : 1);
 
         let head = this.head;
-        this.#reversed = false;
 
-        // Merge Sort Bottom-Up (Iterative)
         for (let step = 1; step < this.length; step *= 2) {
-            let prevEnd: DoublyLinkedNode | undefined = undefined;
             let curr: DoublyLinkedNode | undefined = head;
             let newHead: DoublyLinkedNode | undefined = undefined;
+            let listTail: DoublyLinkedNode | undefined = undefined;
 
             while (curr) {
-                let left = curr;
-                let right = this.#split(left, step);
+                const left = curr;
+                const right = this.#split(left, step);
                 curr = this.#split(right, step);
+
                 const merged = this.#merge(left, right, compare);
 
-                if (!prevEnd) {
+                if (!newHead) {
                     newHead = merged;
                 } else {
-                    prevEnd.next = merged;
-                    if (merged) merged.prev = prevEnd;
+                    this.setNext(listTail!, merged);
+                    if (merged) this.setPrev(merged, listTail);
                 }
 
-                while (prevEnd?.next) {
-                    prevEnd = prevEnd.next;
+                while (listTail && this.getNext(listTail))
+                    listTail = this.getNext(listTail);
+                if (!listTail) {
+                    listTail = newHead;
+                    while (listTail && this.getNext(listTail))
+                        listTail = this.getNext(listTail);
                 }
-                if (!prevEnd) prevEnd = merged;
-                while (prevEnd?.next) prevEnd = prevEnd.next;
             }
+
             head = newHead;
         }
 
-        this.#next = head;
-        let tail = head;
-        while (tail?.next) tail = tail.next;
-        this.#prev = tail;
+        this.head = head;
+        if (head) this.setPrev(head, undefined);
+
+        let logicalTail = head;
+        while (logicalTail && this.getNext(logicalTail))
+            logicalTail = this.getNext(logicalTail);
+        this.tail = logicalTail;
 
         return this;
     }
 
+
     /**
-     * Taglia la lista dopo 'n' nodi e restituisce il resto della lista.
+     * Splits the list after `n` nodes and returns the rest.
+     * (invariato, già corretto)
      */
     #split(node: DoublyLinkedNode | undefined, n: number): DoublyLinkedNode | undefined {
         if (!node) return undefined;
 
-        for (let i = 1; i < n && node.next; i++)
-            node = node.next;
+        for (let i = 1; i < n && this.getNext(node); i++)
+            node = this.getNext(node)!;
 
-        const rest = node.next;
-        node.next = undefined;
-        if (rest) rest.prev = undefined;
+        const rest = this.getNext(node);
+        this.setNext(node, undefined);
+        if (rest) this.setPrev(rest, undefined);
         return rest;
     }
 
+    /**
+     * Merges two sorted sublists iteratively (no recursion, O(1) stack).
+     */
     #merge(left: DoublyLinkedNode | undefined, right: DoublyLinkedNode | undefined, compare: (a: T, b: T) => number): DoublyLinkedNode | undefined {
         if (!left) return right;
         if (!right) return left;
 
-        let result: DoublyLinkedNode;
+        const dummy = new DoublyLinkedNode();
+        let curr: DoublyLinkedNode = dummy;
 
-        const leftVal = this.#data.get(left)!;
-        const rightVal = this.#data.get(right)!;
+        while (left && right) {
+            const leftVal = this.#data.get(left)!;
+            const rightVal = this.#data.get(right)!;
 
-        if (compare(leftVal, rightVal) <= 0) {
-            result = left;
-            result.next = this.#merge(left.next, right, compare);
-            if (result.next) result.next.prev = result;
-            result.prev = undefined;
-        } else {
-            result = right;
-            result.next = this.#merge(left, right.next, compare);
-            if (result.next) result.next.prev = result;
-            result.prev = undefined;
+            if (compare(leftVal, rightVal) <= 0) {
+                const nextLeft = this.getNext(left);   // ← salva prima
+                this.setNext(curr, left);
+                this.setPrev(left, curr);
+                this.setNext(left, undefined);          // ← spezza il vecchio link in sicurezza
+                curr = left;
+                left = nextLeft;
+            } else {
+                const nextRight = this.getNext(right);  // ← salva prima
+                this.setNext(curr, right);
+                this.setPrev(right, curr);
+                this.setNext(right, undefined);         // ← spezza il vecchio link in sicurezza
+                curr = right;
+                right = nextRight;
+            }
         }
 
+        const remainder = left ?? right;
+        this.setNext(curr, remainder);
+        if (remainder) this.setPrev(remainder, curr);
+
+        const result = this.getNext(dummy);
+        if (result) this.setPrev(result, undefined);
         return result;
     }
 
@@ -1137,6 +1150,18 @@ export class LinkedList<T> implements List<T>, Deque<T> {
      */
     [Symbol.iterator](): IterableIterator<T> {
         return this.values();
+    }
+
+    toString(): string {
+        return this.join();
+    }
+
+    toJSON(): T[] {
+        const array = new Array(this.#length);
+        let i = 0;
+        for (const entry of this.values())
+            array[i++] = entry;
+        return array;
     }
 
     get [Symbol.toStringTag](): string { return "LinkedList" };

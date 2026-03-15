@@ -1,16 +1,18 @@
-import type { Stack } from "./interfaces"
+import { Collection, type Stack } from "./collections"
+import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
 class StackNode {
     constructor(public next?: StackNode, public prev?: StackNode) { }
 }
 
-export class LinkedStack<T> implements Stack<T> {
+export class LinkedStack<T> extends Collection<number, T> implements Stack<T> {
     #nodes = new WeakMap<StackNode, T>();
     #counts = new Map<T, number>();
     #head?: StackNode;
     #length = 0;
 
     constructor(iterable?: Iterable<T>) {
+        super();
         for (const item of iterable ?? [])
             this.push(item);
     }
@@ -177,8 +179,19 @@ export class LinkedStack<T> implements Stack<T> {
         this.#length = 0;
     }
 
-    public keys(): IterableIterator<T> {
-        return this.values()
+    public pipe(): Pipeline<T, 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedStack<U>
+    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedStack<U> | Pipeline<T, 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.values())
+        if (!transformer)
+            return pipeline;
+        return new LinkedStack(transformer(pipeline).sink());
+    }
+
+    public *keys(): IterableIterator<number> {
+        let i = 0;
+        for (let node = this.#head; !!node; node = node.next)
+            yield i++;
     }
 
     /**
@@ -192,13 +205,22 @@ export class LinkedStack<T> implements Stack<T> {
     /**
      * Returns an iterator for [value, value] pairs.
      */
-    public *entries(): IterableIterator<[T, T]> {
+    public *entries(): IterableIterator<[number, T]> {
+        let i = 0;
         for (const value of this.values())
-            yield [value, value];
+            yield [i++, value];
     }
 
     [Symbol.iterator](): IterableIterator<T> {
         return this.values();
+    }
+
+    toJSON(): T[] {
+        const array = new Array(this.#length);
+        let i = 0;
+        for (const entry of this)
+            array[i++] = entry;
+        return array;
     }
 
     get [Symbol.toStringTag](): string { return "LinkedStack"; }

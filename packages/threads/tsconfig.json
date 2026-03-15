@@ -13,9 +13,7 @@
     "exclude": [
         "dist"
     ],
-    "references": [
-        {
-            "path": "../eventemitter"
-        }
-    ]
+    "references": [{
+        "path": "../eventemitter"
+    }]
 }

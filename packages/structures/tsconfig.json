@@ -9,5 +9,8 @@
     ],
     "exclude": [
         "dist"
-    ]
+    ],
+    "references": [{
+        "path": "../semaphores"
+    }]
 }

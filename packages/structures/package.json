@@ -20,6 +20,16 @@
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./iterables": {
+      "import": "./dist/iterables.js",
+      "require": "./dist/iterables.js",
+      "types": "./dist/iterables.d.ts"
+    },
+    "./collections": {
+      "import": "./dist/collections.js",
+      "require": "./dist/collections.js",
+      "types": "./dist/collections.d.ts"
+    },
     "./heap": {
       "import": "./dist/heap.js",
       "require": "./dist/heap.js",
@@ -59,6 +69,11 @@
       "import": "./dist/pipeline.js",
       "require": "./dist/pipeline.js",
       "types": "./dist/pipeline.d.ts"
+    },
+    "./series": {
+      "import": "./dist/series.js",
+      "require": "./dist/series.js",
+      "types": "./dist/series.d.ts"
     }
   },
   "main": "./dist/index.js",
@@ -67,6 +82,10 @@
     "prepare": "tsc",
     "pretest": "tsc",
     "test": "node ./dist/test.js"
+  },
+  "dependencies": {
+    "@easylib.ts/semaphores": "^1.0.0",
+    "@easylib.ts/eventemitter": "^1.2.2"
   },
   "devDependencies": {
     "@types/node": "^25.0.3"

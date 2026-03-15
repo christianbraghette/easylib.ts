@@ -1,12 +1,14 @@
 import { BinaryHeap } from "./heap";
-import type { FlattenStep, Queue } from "./interfaces";
+import { Collection, type Queue } from "./collections";
 import { LinkedList } from "./list";
+import { FlattenStep } from ".";
+import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
 class QueueNode {
     constructor(public next?: QueueNode, public prev?: QueueNode) { }
 }
 
-export class LinkedQueue<T> implements Queue<T> {
+export class LinkedQueue<T> extends Collection<number, T> implements Queue<T> {
     #nodes = new WeakMap<QueueNode, T>();
     #counts = new Map<T, number>();
     #head?: QueueNode;
@@ -14,6 +16,7 @@ export class LinkedQueue<T> implements Queue<T> {
     #length = 0;
 
     constructor(iterable?: Iterable<T>) {
+        super();
         for (const item of iterable ?? [])
             this.push(item);
     }
@@ -189,8 +192,19 @@ export class LinkedQueue<T> implements Queue<T> {
         this.#length = 0;
     }
 
-    public keys(): IterableIterator<T> {
-        return this.values()
+    public pipe(): Pipeline<T, 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedQueue<U>
+    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedQueue<U> | Pipeline<T, 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.values())
+        if (!transformer)
+            return pipeline;
+        return new LinkedQueue(transformer(pipeline).sink());
+    }
+
+    public *keys(): IterableIterator<number> {
+        let i = 0;
+        for (let node = this.#tail; !!node; node = node.prev)
+            yield i++;
     }
 
     /**
@@ -204,13 +218,22 @@ export class LinkedQueue<T> implements Queue<T> {
     /**
      * Returns an iterator for [value, value] pairs.
      */
-    public *entries(): IterableIterator<[T, T]> {
+    public *entries(): IterableIterator<[number, T]> {
+        let i = 0;
         for (const value of this.values())
-            yield [value, value];
+            yield [i++, value];
     }
 
     [Symbol.iterator](): IterableIterator<T> {
         return this.values();
+    }
+
+    toJSON(): T[] {
+        const array = new Array(this.#length);
+        let i = 0;
+        for (const entry of this)
+            array[i++] = entry;
+        return array;
     }
 
     get [Symbol.toStringTag](): string { return "QueueStack"; }
@@ -220,7 +243,7 @@ class PriorityQueueNode {
     constructor(public priority: number) { }
 }
 
-export class PriorityQueue<T> implements Queue<T> {
+export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> {
     #data = new WeakMap<PriorityQueueNode, T>();
     #nodes = new Map<T, LinkedList<PriorityQueueNode>>();
     #heap = new BinaryHeap<PriorityQueueNode>((a, b) => b.priority - a.priority);
@@ -230,6 +253,7 @@ export class PriorityQueue<T> implements Queue<T> {
      * @param iterable An optional iterable of [priority, value] pairs to initialize the queue.
      */
     constructor(iterable?: Iterable<[number, T]>) {
+        super();
         for (const [priority, value] of iterable ?? [])
             this.push(value, priority);
     }
@@ -520,6 +544,15 @@ export class PriorityQueue<T> implements Queue<T> {
         return newQueue;
     }
 
+    public pipe(): Pipeline<[number, T], 'sync'>
+    public pipe<U>(transformer: (source: Pipeline<[number, T], 'sync'>) => Pipeline<[number, U], 'sync'>): PriorityQueue<U>
+    public pipe<U>(transformer?: (source: Pipeline<[number, T], 'sync'>) => Pipeline<[number, U], 'sync'>): PriorityQueue<U> | Pipeline<[number, T], 'sync'> {
+        const pipeline = new SyncPipelineConstructor(this.entries())
+        if (!transformer)
+            return pipeline;
+        return new PriorityQueue(transformer(pipeline).sink());
+    }
+
     /**
      * Returns an iterable of priorities in the queue.
      */
@@ -544,8 +577,16 @@ export class PriorityQueue<T> implements Queue<T> {
             yield [node.priority, this.#data.get(node)!];
     }
 
-    [Symbol.iterator](): IterableIterator<T> {
-        return this.values();
+    [Symbol.iterator](): IterableIterator<[number, T]> {
+        return this.entries();
+    }
+
+    toJSON(): T[] {
+        const array = new Array(this.#heap.length);
+        let i = 0;
+        for (const entry of this)
+            array[i++] = entry;
+        return array;
     }
 
     get [Symbol.toStringTag](): string { return "PriorityQueue"; }
