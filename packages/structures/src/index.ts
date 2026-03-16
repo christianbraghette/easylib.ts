@@ -12,7 +12,8 @@ export type FlattenStep<T, D extends number> =
     T : FlattenStep<U, Prev[D]> : T;
 
 export class Null {
-    public static from(...any: any[]): null {
+    public static from<S>(iterable: Iterable<S>): null {
+        for (const _ of iterable);
         return null;
     }
 }

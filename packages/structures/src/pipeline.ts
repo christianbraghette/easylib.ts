@@ -96,7 +96,7 @@ export namespace Pipeline {
 }
 
 class ObservableIterator<T> implements AsyncIterableIterator<T, undefined, never> {
-    #queue = new LinkedQueue<T>();
+    #queue = new LinkedQueue<[number, T]>();
     #done = false;
     #emitter: EventEmitter<{ push: [number, T], close: undefined }>;
 
@@ -107,7 +107,7 @@ class ObservableIterator<T> implements AsyncIterableIterator<T, undefined, never
     }
 
     readonly #push = (value: [number, T]) => {
-        this.#queue.push(value[1]);
+        this.#queue.push(value);
     }
 
     readonly #close = () => {
@@ -154,7 +154,7 @@ class ObservableIterator<T> implements AsyncIterableIterator<T, undefined, never
 
 class Observable<T> {
     #state: 'open' | 'close' = 'open';
-    #map = new HashMap<Function, () => void>;
+    #map = new HashMap<Function, [(entry: [number, T]) => any, (() => void) | undefined]>;
     #emitter: EventEmitter<{ push: [number, T], close: undefined }>;
 
     constructor(emitter: EventEmitter<{ push: [number, T], close: undefined }>) {
@@ -166,20 +166,23 @@ class Observable<T> {
         return this.#state;
     }
 
-    public register(callbackfn: (entry: [number, T]) => void, returnFn?: () => void) {
-        this.#emitter.on('push', callbackfn);
-        if (returnFn) {
+    public register(callbackfn: (value: T, index: number) => void, returnFn?: () => void): void {
+        const func = ([index, value]: [number, T]) => callbackfn(value, index);
+        this.#emitter.on('push', func);
+        this.#map.set(callbackfn, [func, returnFn]);
+        if (returnFn)
             this.#emitter.once('close', returnFn);
-            this.#map.set(callbackfn, returnFn);
-        }
     }
 
-    public unregister(callbackfn: (entry: [number, T]) => void) {
-        this.#emitter.off('push', callbackfn);
-        const returnFn = this.#map.get(callbackfn);
-        if (returnFn && this.#map.delete(returnFn)) {
-            this.#emitter.off('close', returnFn);
-        }
+    public unregister(callbackfn: (value: T, index: number) => void): boolean {
+        const func = this.#map.get(callbackfn);
+        if (!func) return false;
+        this.#emitter.off('push', func[0]);
+
+        if (func[1])
+            this.#emitter.off('close', func[1]);
+
+        return this.#map.delete(callbackfn);
     }
 
     public pipe(): Pipeline<T, 'async'> {
@@ -994,7 +997,18 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
 
     public tap(): Observable<T> {
         const emitter = new EventEmitter<{ push: [number, T], close: undefined }>();
-        this.#source = this.peek((value, index) => emitter.emit('push', [index, value]), () => emitter.emit('close', undefined));
+        const originalSource = this.#source;
+
+        async function* iterable() {
+            let i = 0;
+            for await (const value of originalSource) {
+                emitter.emit('push', [i++, value]);
+                yield value;
+            }
+            emitter.emit('close', undefined);
+        }
+
+        this.#source = iterable();
         return new Observable(emitter);
     }
 

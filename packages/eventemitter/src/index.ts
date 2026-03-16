@@ -15,7 +15,23 @@
  */
 
 /** */
-type EventCallback<Event extends keyof EventsMap, EventsMap extends Record<string | number, any>> = (data: EventsMap[Event], emitter: EventEmitter<EventsMap>) => void;
+const EventsMapSymbol = Symbol("EventsMap");
+
+/**
+ * The callback invoked when an event of type `Event` is emitted.
+ *
+ * The callback receives two arguments:
+ * - `data`: the payload for the emitted event (type depends on the event key)
+ * - `emitter`: the `EventEmitter` instance that emitted the event
+ *
+ * @template Event The event key type (keyof the emitter's `EventsMap`).
+ * @template Emitter The concrete `EventEmitter` type instance.
+ * @param data The event payload for the invoked callback.
+ * @param emitter The `EventEmitter` instance emitting the event.
+ */
+export type EventCallback<Event extends keyof Emitter[typeof EventsMapSymbol], Emitter extends EventEmitter<any>> = (data: Emitter[typeof EventsMapSymbol][Event], emitter: Emitter) => void;
+
+type EventData<Event extends keyof EventsMap, EventsMap extends Record<string | number, any>> = EventsMap[Event] extends void | undefined ? ([] | [undefined]) : [EventsMap[Event]];
 
 /**
  * Lightweight EventEmitter implementation for TypeScript.
@@ -24,26 +40,13 @@ type EventCallback<Event extends keyof EventsMap, EventsMap extends Record<strin
  * standard subscriptions (`on`), one-time listeners (`once`), awaiting
  * an event (`wait`), emitting (`emit`), and full cleanup (`destroy`).
  *
- * Features:
- * - `on` to register persistent listeners
- * - `once` to register one-time listeners that auto-remove after firing
- * - `emit` to invoke all listeners for a given event key
- * - `wait` to asynchronously await the next occurrence of an event (with optional timeout)
- * - `destroy` to reject pending `wait()` promises, clear timers, and remove listeners
- *
- * Notes on types and behavior:
- * - `EventsMap` maps event keys to their payload types. For events with no payload use `void` or `undefined`.
- * - `emit` expects a payload matching the event's type.
- * - `wait` resolves with the emitted payload or rejects with the string "Event timed out" (on timeout) or "EventEmitter destroyed" (when destroyed).
- *
  * @template EventsMap The mapping of event keys to payload types.
  */
 export class EventEmitter<EventsMap extends Record<string | number, any>> {
-    // Holds reject functions for pending `wait()` promises so they can be rejected on destroy
+    declare [EventsMapSymbol]: EventsMap;
+
     #waiters = new Set<(reason?: any) => void>()
-    // Map from event key -> Set of listener callbacks
-    #calls = new Map<keyof EventsMap, Set<EventCallback<any, EventsMap>>>();
-    // Active timer IDs created by `wait()` so they can be cleared on destroy
+    #calls = new Map<keyof EventsMap, Set<EventCallback<any, this>>>();
     #timeouts = new Set<ReturnType<typeof setTimeout>>();
 
     /**
@@ -52,7 +55,7 @@ export class EventEmitter<EventsMap extends Record<string | number, any>> {
     * @param type The event key to listen for.
     * @param callbackFn The callback invoked with `(data, emitter)` when the event is emitted.
      */
-    public on<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, EventsMap>): void {
+    public on<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
         if (!this.#calls.has(type))
             this.#calls.set(type, new Set());
         this.#calls.get(type)?.add(callbackFn);
@@ -65,8 +68,8 @@ export class EventEmitter<EventsMap extends Record<string | number, any>> {
     * @param type The event key to listen for once.
     * @param callbackFn The callback invoked once with `(data, emitter)`.
      */
-    public once<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, EventsMap>): void {
-        const wrapper: EventCallback<Event, EventsMap> = (event) => {
+    public once<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
+        const wrapper: EventCallback<Event, this> = (event) => {
             callbackFn(event, this);
             this.off(type, wrapper);
         };
@@ -80,7 +83,7 @@ export class EventEmitter<EventsMap extends Record<string | number, any>> {
      * @param type The event key whose listener should be removed.
      * @param callbackFn The callback function to unregister.
      */
-    public off<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, EventsMap>): void {
+    public off<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
         this.#calls.get(type)?.delete(callbackFn);
     }
 
@@ -92,9 +95,9 @@ export class EventEmitter<EventsMap extends Record<string | number, any>> {
      * @param type The event key to emit.
      * @param data The payload associated with the event.
      */
-    public emit<Event extends keyof EventsMap>(type: Event, data: EventsMap[Event]): void {
+    public emit<Event extends keyof EventsMap>(type: Event, ...data: EventData<Event, EventsMap>): void {
         for (const callFn of this.#calls.get(type) ?? [])
-            callFn(data, this);
+            callFn(data[0], this);
     }
 
     /**
@@ -117,7 +120,7 @@ export class EventEmitter<EventsMap extends Record<string | number, any>> {
                 t = setTimeout(() => {
                     if (t !== undefined)
                         this.#timeouts.delete(t);
-                    reject("Event timed out");
+                    reject("EventEmitter:timeout");
                 }, timeout);
                 this.#timeouts.add(t);
             }
@@ -138,7 +141,7 @@ export class EventEmitter<EventsMap extends Record<string | number, any>> {
      */
     public destroy() {
         for (const reject of this.#waiters)
-            reject("EventEmitter destroyed");
+            reject("EventEmitter:destroyed");
         for (const timeout of this.#timeouts)
             clearTimeout(timeout);
         for (const set of this.#calls)
