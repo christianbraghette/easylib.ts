@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/christianbraghette/easylib.ts.git"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Christian Braghette",
   "type": "commonjs",
   "exports": {

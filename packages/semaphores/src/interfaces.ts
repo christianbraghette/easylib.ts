@@ -1,4 +1,22 @@
 /**
+ * Easylib.ts
+ * 
+ * Copyright 2026 Christian Braghette
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
  * Release a previously acquired permit back to the semaphore.
  */
 export type ReleaseFunction = () => void;
@@ -23,7 +41,21 @@ export interface VarLock<T> extends Lock {
  * to a finite number of resources (permits).
  */
 export interface Semaphore {
-    maxCount: number
+    maxCount: number;
+
+    /**
+     * Check if the mutex is currently locked.
+     *
+     * @returns `true` if the lock is held, `false` otherwise.
+     */
+    readonly locked: boolean;
+
+    /**
+     * Returns the number of tasks currently waiting in the queue.
+     *
+     * Useful for debugging or monitoring contention.
+     */
+    readonly waitersCount: number;
 
     /**
      * Attempt to acquire the mutex.
@@ -51,19 +83,7 @@ export interface Semaphore {
      */
     tryAcquire(): Lock | undefined;
 
-    /**
-     * Check if the mutex is currently locked.
-     *
-     * @returns `true` if the lock is held, `false` otherwise.
-     */
-    isLocked(): boolean;
-
-    /**
-     * Returns the number of tasks currently waiting in the queue.
-     *
-     * Useful for debugging or monitoring contention.
-     */
-    waitersCount(): number;
+    
 
     /**
      * Forcefully resolves all pending acquisitions with a no-op release function.
@@ -87,25 +107,14 @@ export interface Semaphore {
     /**
      * Execute a function.
      * - Acquires the lock.
+     * - If the lock is not acquired within the given timeout,rejects with `Error("Mutex timeout")`.
      * - Runs the provided function `fn`.
      * - Releases the lock in a `finally` block to ensure it always unlocks.
      *
      * @param fn Async or sync function to execute exclusively.
      * @returns The result of `fn`.
      */
-    run<T>(fn: () => Promise<T> | T): Promise<T>;
-
-    /**
-     * Execute a function exclusively with a timeout.
-     * - If the lock is not acquired within the given timeout,
-     *   rejects with `Error("Mutex timeout")`.
-     * - Otherwise, behaves like `run`.
-     *
-     * @param fn Async or sync function to execute exclusively.
-     * @param ms Timeout in milliseconds.
-     * @returns The result of `fn`.
-     */
-    runWithTimeout<T>(fn: () => Promise<T> | T, ms: number): Promise<T>;
+    run<T>(fn: () => Promise<T> | T, ms?: number): Promise<T>;
 }
 
 /**

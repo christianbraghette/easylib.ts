@@ -1,3 +1,21 @@
+/**
+ * Easylib.ts
+ * 
+ * Copyright 2026 Christian Braghette
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import type { ReleaseFunction, VarLock, Lock, Semaphore } from "./interfaces";
 
 class QueueNode {
@@ -72,20 +90,22 @@ class Queue<T> {
 }
 
 export class AsyncSemaphore implements Semaphore {
-    private count: number;
-    private readonly queue = new Queue<{ resolve: (release: Lock) => void, reject: (reason: 'reset' | 'error') => void }>();
+    #count: number;
+    #maxCount: number;
+    readonly #queue = new Queue<{ resolve: (release: Lock) => void, reject: (reason: 'reset' | 'error') => void }>();
 
-    public constructor(private _maxCount: number) {
-        this.count = _maxCount;
+    public constructor(maxCount: number) {
+        this.#count = maxCount;
+        this.#maxCount = maxCount;
     }
 
     public get maxCount(): number {
-        return this._maxCount;
+        return this.#maxCount;
     }
 
     public set maxCount(count: number) {
-        this.count += count - this.maxCount;
-        this._maxCount = count;
+        this.#count += count - this.maxCount;
+        this.#maxCount = count;
     }
 
     public acquire(): Promise<Lock>
@@ -99,8 +119,8 @@ export class AsyncSemaphore implements Semaphore {
             }).catch((error) => { throw error; });
             return;
         }
-        if (this.count-- > 0)
-            return Promise.resolve(this.createLock());
+        if (this.#count-- > 0)
+            return Promise.resolve(this.#createLock());
         return new Promise((resolve, reject) => {
             const entry = { resolve, reject };
 
@@ -109,18 +129,18 @@ export class AsyncSemaphore implements Semaphore {
                     return reject(new Error("Acquire aborted"));
 
                 let handler = () => {
-                    this.queue.remove(entry);
+                    this.#queue.remove(entry);
                     reject(new Error("Acquire aborted"));
                 }
 
                 callbackfn.addEventListener('abort', handler, { once: true })
             }
 
-            this.queue.push(entry);
+            this.#queue.push(entry);
         });
     }
 
-    private createLock(released = false): Lock {
+    #createLock(released = false): Lock {
         class LockConstructor implements Lock {
             #released: boolean;
 
@@ -131,8 +151,8 @@ export class AsyncSemaphore implements Semaphore {
                 this.release = semaphore ? () => {
                     if (this.#released) return;
                     this.#released = true;
-                    if (semaphore.count++ < 0)
-                        semaphore.queue.shift()?.resolve(semaphore.createLock());
+                    if (semaphore.#count++ < 0)
+                        semaphore.#queue.shift()?.resolve(semaphore.#createLock());
                 } : () => {
                     if (this.#released) return;
                     this.#released = true;
@@ -165,43 +185,33 @@ export class AsyncSemaphore implements Semaphore {
     }
 
     public tryAcquire(): Lock | undefined {
-        if (this.count-- > 0)
-            return this.createLock();
-        this.count++;
+        if (this.#count-- > 0)
+            return this.#createLock();
+        this.#count++;
         return;
     }
 
-    public isLocked(): boolean {
-        return this.count < 1;
+    public get locked(): boolean {
+        return this.#count < 1;
     };
 
-    public waitersCount(): number {
-        return this.queue.length;
+    public get waitersCount(): number {
+        return this.#queue.length;
     }
 
     public releaseAll(): void {
-        while (this.queue.length > 0)
-            this.queue.shift()?.resolve(this.createLock(true));
-        this.count = this._maxCount;
+        while (this.#queue.length > 0)
+            this.#queue.shift()?.resolve(this.#createLock(true));
+        this.#count = this.#maxCount;
     }
 
     public reset(): void {
-        while (this.queue.length > 0)
-            this.queue.shift()?.reject('reset');
-        this.count = this._maxCount;
+        while (this.#queue.length > 0)
+            this.#queue.shift()?.reject('reset');
+        this.#count = this.#maxCount;
     }
 
-    public async run<T>(fn: () => Promise<T> | T): Promise<T> {
-        const release = await this.acquire();
-        try {
-            return await fn();
-        } finally {
-            release.release();
-        }
-    }
-
-    public async runWithTimeout<T>(fn: () => Promise<T> | T, ms: number): Promise<T> {
-        // Creiamo un AbortController per gestire il timeout
+    public async run<T>(fn: () => Promise<T> | T, ms?: number): Promise<T> {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), ms);
 
@@ -229,60 +239,6 @@ export class AsyncMutex extends AsyncSemaphore {
     }
 
     public accessor maxCount = 1;
-}
-
-export class AsyncLocker<T> extends AsyncSemaphore {
-    #value: T;
-
-    constructor(value: T)
-    constructor(value: T, maxCount?: number)
-    constructor(value: T, maxCount = 1) {
-        super(maxCount);
-        this.#value = value;
-    }
-
-    public async acquire(): Promise<VarLock<T>> {
-        const lock = await super.acquire()
-        if (!lock.locked)
-            throw new Error("Lock not locking");
-        return this.createVarLock(lock);
-    }
-
-    private createVarLock(lock: Lock) {
-        class VarLockConstructor<T> implements VarLock<T> {
-            #locker: AsyncLocker<T>;
-
-            constructor(locker: AsyncLocker<T>, private readonly lock: Lock) {
-                this.#locker = locker;
-                this.release = this.lock.release;
-            }
-
-            public get value() {
-                return this.#locker.#value;
-            }
-
-            public set value(value: T) {
-                this.#locker.#value = value;
-            }
-
-            public get locked(): boolean {
-                return this.lock.locked;
-            }
-
-            public release: ReleaseFunction;
-
-            [Symbol.dispose](): void {
-                this.lock.release();
-            }
-
-            async [Symbol.asyncDispose](): Promise<void> {
-                this.lock.release();
-            }
-
-        }
-
-        return new VarLockConstructor(this, lock);
-    }
 }
 
 export type * from "./interfaces";

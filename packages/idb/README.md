@@ -46,4 +46,4 @@ const all = await users.getAll();
 
 ## License
 
-MIT — see the `LICENSE` file for details.
+GPL 3.0 — see the `LICENSE` file for details.

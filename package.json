@@ -1,20 +1,31 @@
 {
   "name": "easylib.ts",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "private": true,
+  "description": "",
+  "keywords": [],
+  "homepage": "https://github.com/christianbraghette/easylib.ts#readme",
+  "bugs": {
+    "url": "https://github.com/christianbraghette/easylib.ts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/christianbraghette/easylib.ts.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Christian Braghette",
+  "type": "commonjs",
+  "main": "index.js",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc --build --clean"
   },
-  "workspaces": [
-    "packages/*"
-  ],
-  "keywords": [],
-  "author": "Christian Braghette",
-  "license": "MIT",
-  "type": "commonjs",
+  "dependencies": {
+    "undici-types": "^7.18.2"
+  },
   "devDependencies": {
     "@types/node": "^25.4.0"
   }

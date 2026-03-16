@@ -129,4 +129,4 @@ Cleans up all listeners, pending `wait()` promises, and active timeouts. All pen
 
 ## License
 
-MIT License
+GPL 3.0 License

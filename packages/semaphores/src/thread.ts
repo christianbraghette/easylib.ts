@@ -1,3 +1,21 @@
+/**
+ * Easylib.ts
+ * 
+ * Copyright 2026 Christian Braghette
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import type { ReleaseFunction, Lock, Semaphore, Mutex } from "./interfaces";
 import { AtomicInt32 } from "@easylib.ts/atomics";
 
@@ -39,11 +57,15 @@ export class ThreadSemaphore implements Semaphore {
                 callbackfn.addEventListener('abort', () => reject(new Error("Acquire aborted")), { once: true })
             }
 
-            this.count.waitAsync(this.count.sub()).then(res => {
+            if (!this.count.waitAsync?.(this.count.sub()).then(res => {
                 if (res !== 'ok')
                     return reject(res);
                 return resolve(this.createLock());
-            });
+            })) {
+                let lock: Lock | undefined;
+                while (!lock) lock = this.tryAcquire();
+                resolve(lock);
+            }
         });
     }
 
@@ -98,11 +120,11 @@ export class ThreadSemaphore implements Semaphore {
         return;
     }
 
-    public isLocked(): boolean {
+    public get locked(): boolean {
         return this.count.get() < 1;
     };
 
-    public waitersCount(): number {
+    public get waitersCount(): number {
         return this._maxCount - this.count.get();
     }
 
@@ -114,16 +136,7 @@ export class ThreadSemaphore implements Semaphore {
         this.count.set(this._maxCount + 2);
     }
 
-    public async run<T>(fn: () => Promise<T> | T): Promise<T> {
-        const release = await this.acquire();
-        try {
-            return await fn()
-        } finally {
-            release.release();
-        }
-    }
-
-    public async runWithTimeout<T>(fn: () => Promise<T> | T, ms: number): Promise<T> {
+    public async run<T>(fn: () => Promise<T> | T, ms: number): Promise<T> {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), ms);
 
@@ -145,7 +158,7 @@ export class ThreadSemaphore implements Semaphore {
     }
 }
 
-export class AtomicMutex extends ThreadSemaphore implements Mutex {
+export class ThreadMutex extends ThreadSemaphore implements Mutex {
     public constructor(count: AtomicInt32, initialized = false) {
         super(count, 1, initialized);
     }

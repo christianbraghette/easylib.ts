@@ -7,4 +7,4 @@ setTimeout(() => {
     num.notify();
 }, 1000)
 
-num.waitAsync(0).then((res) => console.log("Result:", res, num.get()));
+num.waitAsync?.(0).then((res) => console.log("Result:", res, num.get()));
