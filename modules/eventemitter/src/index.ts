@@ -102,6 +102,32 @@ export class EventEmitter<EventsMap extends Record<string | number, any>> {
             callFn(data[0], this);
     }
 
+    /** Alias for `on` */
+    public addEventListener<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
+        this.on(type, callbackFn);
+    }
+
+    /** Alias for `off` */
+    public removeEventListener<Event extends keyof EventsMap>(type: Event, callbackFn: EventCallback<Event, this>): void {
+        this.off(type, callbackFn);
+    }
+
+    /** Removes all listeners */
+    public removeAllListeners<Event extends keyof EventsMap>(type?: Event): void {
+        if (type) {
+            this.#calls.get(type)?.clear();
+        } else {
+            this.#calls.clear();
+        }
+    }
+
+    /**
+     * Alias per `emit`, aggiunto per coerenza con l'ecosistema DOM.
+     */
+    public dispatchEvent<Event extends keyof EventsMap>(type: Event, ...data: EventData<Event, EventsMap>): void {
+        this.emit(type, ...data);
+    }
+
     /**
      * Waits asynchronously for the next occurrence of the specified event key.
      *

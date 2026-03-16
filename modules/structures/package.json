@@ -20,11 +20,6 @@
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./iterables": {
-      "import": "./dist/iterables.js",
-      "require": "./dist/iterables.js",
-      "types": "./dist/iterables.d.ts"
-    },
     "./collections": {
       "import": "./dist/collections.js",
       "require": "./dist/collections.js",
@@ -70,10 +65,10 @@
       "require": "./dist/pipeline.js",
       "types": "./dist/pipeline.d.ts"
     },
-    "./series": {
-      "import": "./dist/series.js",
-      "require": "./dist/series.js",
-      "types": "./dist/series.d.ts"
+    "./dataframe": {
+      "import": "./dist/dataframe.js",
+      "require": "./dist/dataframe.js",
+      "types": "./dist/dataframe.d.ts"
     }
   },
   "main": "./dist/index.js",

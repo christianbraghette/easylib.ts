@@ -72,6 +72,10 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
         return this.#items.length;
     }
 
+    public set length(length: number) {
+        this.#items.length = length;
+    }
+
     // ### BASE METHODS
 
     public push(...items: T[]): number {
@@ -315,48 +319,48 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
             this.push(item);
     }
 
-    private get head(): DoublyLinkedNode | undefined {
+    get #head(): DoublyLinkedNode | undefined {
         return this.#reversed ? this.#prev : this.#next;
     }
 
-    private set head(node: DoublyLinkedNode | undefined) {
+    set #head(node: DoublyLinkedNode | undefined) {
         if (this.#reversed)
             this.#prev = node;
         else
             this.#next = node;
     }
 
-    private get tail(): DoublyLinkedNode | undefined {
+    get #tail(): DoublyLinkedNode | undefined {
         return this.#reversed ? this.#next : this.#prev;
     }
 
-    private set tail(node: DoublyLinkedNode | undefined) {
+    set #tail(node: DoublyLinkedNode | undefined) {
         if (this.#reversed)
             this.#next = node;
         else
             this.#prev = node;
     }
 
-    private getValue(node?: DoublyLinkedNode): T | undefined {
+    #getValue(node?: DoublyLinkedNode): T | undefined {
         return node ? this.#data.get(node) : undefined;
     }
 
-    private getNext(node?: DoublyLinkedNode): DoublyLinkedNode | undefined {
+    #getNext(node?: DoublyLinkedNode): DoublyLinkedNode | undefined {
         return this.#reversed ? node?.prev : node?.next;
     }
 
-    private setNext(curr: DoublyLinkedNode, next: DoublyLinkedNode | undefined): void {
+    #setNext(curr: DoublyLinkedNode, next: DoublyLinkedNode | undefined): void {
         if (this.#reversed)
             curr.prev = next;
         else
             curr.next = next;
     }
 
-    private getPrev(node?: DoublyLinkedNode): DoublyLinkedNode | undefined {
+    #getPrev(node?: DoublyLinkedNode): DoublyLinkedNode | undefined {
         return this.#reversed ? node?.next : node?.prev;
     }
 
-    private setPrev(curr: DoublyLinkedNode, prev: DoublyLinkedNode | undefined): void {
+    #setPrev(curr: DoublyLinkedNode, prev: DoublyLinkedNode | undefined): void {
         if (this.#reversed)
             curr.next = prev;
         else
@@ -369,14 +373,14 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * Returns the first element of the list.
      */
     public first(): T | undefined {
-        return this.getValue(this.head);
+        return this.#getValue(this.#head);
     }
 
     /**
      * Returns the last element of the list.
      */
     public last(): T | undefined {
-        return this.getValue(this.tail);
+        return this.#getValue(this.#tail);
     }
 
     public clear(): void {
@@ -395,13 +399,13 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
             const newNode = new DoublyLinkedNode();
             this.#data.set(newNode, item);
 
-            if (!this.tail) {
-                this.head = newNode;
-                this.tail = newNode;
+            if (!this.#tail) {
+                this.#head = newNode;
+                this.#tail = newNode;
             } else {
-                this.setNext(this.tail, newNode);
-                this.setPrev(newNode, this.tail);
-                this.tail = newNode;
+                this.#setNext(this.#tail, newNode);
+                this.#setPrev(newNode, this.#tail);
+                this.#tail = newNode;
             }
             this.#length++;
         }
@@ -419,13 +423,13 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
             const newNode = new DoublyLinkedNode();
             this.#data.set(newNode, item);
 
-            if (!this.head) {
-                this.head = newNode;
-                this.tail = newNode;
+            if (!this.#head) {
+                this.#head = newNode;
+                this.#tail = newNode;
             } else {
-                this.setPrev(this.head, newNode);
-                this.setNext(newNode, this.head);
-                this.head = newNode;
+                this.#setPrev(this.#head, newNode);
+                this.#setNext(newNode, this.#head);
+                this.#head = newNode;
             }
             this.#length++;
         }
@@ -436,15 +440,15 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * Removes and returns the last element of the list.
      */
     public pop(): T | undefined {
-        const nodeToRemove = this.tail;
+        const nodeToRemove = this.#tail;
         if (!nodeToRemove) return undefined;
 
-        const value = this.getValue(nodeToRemove)!;
-        const newTail = this.getPrev(nodeToRemove);
+        const value = this.#getValue(nodeToRemove)!;
+        const newTail = this.#getPrev(nodeToRemove);
 
-        this.tail = newTail;
-        if (this.tail) this.setNext(this.tail, undefined);
-        else this.head = undefined;
+        this.#tail = newTail;
+        if (this.#tail) this.#setNext(this.#tail, undefined);
+        else this.#head = undefined;
 
         this.#data.delete(nodeToRemove);
         this.#length--;
@@ -455,18 +459,18 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * Removes and returns the first element of the list.
      */
     public shift(): T | undefined {
-        const nodeToRemove = this.head;
+        const nodeToRemove = this.#head;
         if (!nodeToRemove) return undefined;
 
-        const value = this.getValue(nodeToRemove)!;
-        const newHead = this.getNext(nodeToRemove);
+        const value = this.#getValue(nodeToRemove)!;
+        const newHead = this.#getNext(nodeToRemove);
 
-        this.head = newHead;
+        this.#head = newHead;
 
-        if (this.head) {
-            this.setPrev(this.head, undefined);
+        if (this.#head) {
+            this.#setPrev(this.#head, undefined);
         } else {
-            this.tail = undefined;
+            this.#tail = undefined;
         }
 
         this.#data.delete(nodeToRemove);
@@ -498,7 +502,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * @returns The list instance.
      */
     public fill(value: T): this {
-        for (let node = this.head; !!node; node = this.getNext(node)) {
+        for (let node = this.#head; !!node; node = this.#getNext(node)) {
             this.#data.set(node, value);
         }
         return this;
@@ -509,7 +513,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * @param searchElement The element to search for.
      */
     public includes(searchElement: T): boolean {
-        for (let node = this.head; !!node; node = this.getNext(node))
+        for (let node = this.#head; !!node; node = this.#getNext(node))
             if (this.#data.get(node) === searchElement)
                 return true;
         return false;
@@ -522,17 +526,17 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     public remove(value: T): boolean {
         let nodeToRemove: DoublyLinkedNode | undefined;
 
-        for (nodeToRemove = this.head; !!nodeToRemove && this.#data.get(nodeToRemove) !== value; nodeToRemove = this.getNext(nodeToRemove));
+        for (nodeToRemove = this.#head; !!nodeToRemove && this.#data.get(nodeToRemove) !== value; nodeToRemove = this.#getNext(nodeToRemove));
         if (!nodeToRemove) return false;
 
-        const prevNode = this.getPrev(nodeToRemove);
-        const nextNode = this.getNext(nodeToRemove);
+        const prevNode = this.#getPrev(nodeToRemove);
+        const nextNode = this.#getNext(nodeToRemove);
 
-        if (prevNode) this.setNext(prevNode, nextNode);
-        else this.head = nextNode;
+        if (prevNode) this.#setNext(prevNode, nextNode);
+        else this.#head = nextNode;
 
-        if (nextNode) this.setPrev(nextNode, prevNode);
-        else this.tail = prevNode;
+        if (nextNode) this.#setPrev(nextNode, prevNode);
+        else this.#tail = prevNode;
 
         this.#data.delete(nodeToRemove);
         this.#length--;
@@ -591,12 +595,12 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         if (target < 0 || target >= this.length) return undefined;
 
         const fromStart = target < this.length / 2;
-        let curr = fromStart ? this.head : this.tail;
+        let curr = fromStart ? this.#head : this.#tail;
         let count = fromStart ? 0 : this.length - 1;
 
         while (curr) {
-            if (count === target) return this.getValue(curr);
-            curr = fromStart ? this.getNext(curr) : this.getPrev(curr);
+            if (count === target) return this.#getValue(curr);
+            curr = fromStart ? this.#getNext(curr) : this.#getPrev(curr);
             fromStart ? count++ : count--;
         }
         return undefined;
@@ -611,8 +615,8 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         let i = 0;
         let start = fromIndex < 0 ? Math.max(this.length + fromIndex, 0) : fromIndex;
 
-        for (let node = this.head; !!node; node = this.getNext(node)) {
-            if (i >= start && this.getValue(node) === searchElement) return i;
+        for (let node = this.#head; !!node; node = this.#getNext(node)) {
+            if (i >= start && this.#getValue(node) === searchElement) return i;
             i++;
         }
         return -1;
@@ -627,8 +631,8 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         let i = this.length - 1;
         let start = fromIndex < 0 ? this.length + fromIndex : fromIndex;
 
-        for (let node = this.tail; !!node; node = this.getPrev(node)) {
-            if (i <= start && this.getValue(node) === searchElement) return i;
+        for (let node = this.#tail; !!node; node = this.#getPrev(node)) {
+            if (i <= start && this.#getValue(node) === searchElement) return i;
             i--;
         }
         return -1;
@@ -668,23 +672,23 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
 
         const removed: T[] = [];
 
-        let cursor = this.head;
+        let cursor = this.#head;
         for (let i = 0; i < s; i++)
-            cursor = this.getNext(cursor);
+            cursor = this.#getNext(cursor);
 
         for (let i = 0; i < d; i++) {
             if (!cursor) break;
-            const val = this.getValue(cursor)!;
+            const val = this.#getValue(cursor)!;
             removed.push(val);
 
-            const nextNode = this.getNext(cursor);
-            const prevNode = this.getPrev(cursor);
+            const nextNode = this.#getNext(cursor);
+            const prevNode = this.#getPrev(cursor);
 
-            if (prevNode) this.setNext(prevNode, nextNode);
-            else this.head = nextNode;
+            if (prevNode) this.#setNext(prevNode, nextNode);
+            else this.#head = nextNode;
 
-            if (nextNode) this.setPrev(nextNode, prevNode);
-            else this.tail = prevNode;
+            if (nextNode) this.#setPrev(nextNode, prevNode);
+            else this.#tail = prevNode;
 
             const toDelete = cursor;
             cursor = nextNode;
@@ -698,26 +702,26 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
             this.#data.set(newNode, item);
 
             if (!cursor) {
-                const beforeNode = this.tail;
+                const beforeNode = this.#tail;
                 if (!beforeNode) {
-                    this.head = newNode;
-                    this.tail = newNode;
+                    this.#head = newNode;
+                    this.#tail = newNode;
                 } else {
-                    this.setNext(beforeNode, newNode);
-                    this.setPrev(newNode, beforeNode);
-                    this.tail = newNode;
+                    this.#setNext(beforeNode, newNode);
+                    this.#setPrev(newNode, beforeNode);
+                    this.#tail = newNode;
                 }
             } else {
-                const beforeNode = this.getPrev(cursor);
+                const beforeNode = this.#getPrev(cursor);
                 if (!beforeNode) {
-                    this.setNext(newNode, cursor);
-                    this.setPrev(cursor, newNode);
-                    this.head = newNode;
+                    this.#setNext(newNode, cursor);
+                    this.#setPrev(cursor, newNode);
+                    this.#head = newNode;
                 } else {
-                    this.setNext(beforeNode, newNode);
-                    this.setPrev(newNode, beforeNode);
-                    this.setNext(newNode, cursor);
-                    this.setPrev(cursor, newNode);
+                    this.#setNext(beforeNode, newNode);
+                    this.#setPrev(newNode, beforeNode);
+                    this.#setNext(newNode, cursor);
+                    this.#setPrev(cursor, newNode);
                 }
             }
             this.#length++;
@@ -740,26 +744,26 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         if (t >= this.length || s >= e) return this;
 
         const buffer: T[] = [];
-        let nodeS = this.head;
-        for (let i = 0; i < s; i++) nodeS = this.getNext(nodeS);
+        let nodeS = this.#head;
+        for (let i = 0; i < s; i++) nodeS = this.#getNext(nodeS);
 
         let count = 0;
         const limit = e - s;
         while (nodeS && count < limit) {
-            buffer.push(this.getValue(nodeS)!);
-            nodeS = this.getNext(nodeS);
+            buffer.push(this.#getValue(nodeS)!);
+            nodeS = this.#getNext(nodeS);
             count++;
         }
 
-        let nodeT = this.head;
-        for (let i = 0; i < t; i++) nodeT = this.getNext(nodeT);
+        let nodeT = this.#head;
+        for (let i = 0; i < t; i++) nodeT = this.#getNext(nodeT);
 
         for (const val of buffer) {
             if (!nodeT) break;
 
             this.#data.set(nodeT, val);
 
-            nodeT = this.getNext(nodeT);
+            nodeT = this.#getNext(nodeT);
         }
 
         return this;
@@ -858,8 +862,8 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      */
     public findLast<S extends T>(predicate: (value: T, index: number, obj: LinkedList<T>) => boolean | undefined | null): S | undefined {
         let i = this.length - 1;
-        for (let node = this.tail; !!node; node = this.getPrev(node)) {
-            const value = this.getValue(node) as T;
+        for (let node = this.#tail; !!node; node = this.#getPrev(node)) {
+            const value = this.#getValue(node) as T;
             if (predicate(value, i--, this)) return value as S;
         }
         return undefined;
@@ -871,8 +875,8 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     public reduceRight<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, obj: LinkedList<T>) => U, initialValue: U): U {
         let accumulator = initialValue;
         let i = this.length - 1;
-        for (let node = this.tail; !!node; node = this.getPrev(node)) {
-            accumulator = callbackfn(accumulator, this.getValue(node)!, i--, this);
+        for (let node = this.#tail; !!node; node = this.#getPrev(node)) {
+            accumulator = callbackfn(accumulator, this.#getValue(node)!, i--, this);
         }
         return accumulator;
     }
@@ -931,7 +935,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
 
         const compare = compareFn ?? ((a, b) => a == b ? 0 : a < b ? -1 : 1);
 
-        let head = this.head;
+        let head = this.#head;
 
         for (let step = 1; step < this.length; step *= 2) {
             let curr: DoublyLinkedNode | undefined = head;
@@ -948,29 +952,29 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
                 if (!newHead) {
                     newHead = merged;
                 } else {
-                    this.setNext(listTail!, merged);
-                    if (merged) this.setPrev(merged, listTail);
+                    this.#setNext(listTail!, merged);
+                    if (merged) this.#setPrev(merged, listTail);
                 }
 
-                while (listTail && this.getNext(listTail))
-                    listTail = this.getNext(listTail);
+                while (listTail && this.#getNext(listTail))
+                    listTail = this.#getNext(listTail);
                 if (!listTail) {
                     listTail = newHead;
-                    while (listTail && this.getNext(listTail))
-                        listTail = this.getNext(listTail);
+                    while (listTail && this.#getNext(listTail))
+                        listTail = this.#getNext(listTail);
                 }
             }
 
             head = newHead;
         }
 
-        this.head = head;
-        if (head) this.setPrev(head, undefined);
+        this.#head = head;
+        if (head) this.#setPrev(head, undefined);
 
         let logicalTail = head;
-        while (logicalTail && this.getNext(logicalTail))
-            logicalTail = this.getNext(logicalTail);
-        this.tail = logicalTail;
+        while (logicalTail && this.#getNext(logicalTail))
+            logicalTail = this.#getNext(logicalTail);
+        this.#tail = logicalTail;
 
         return this;
     }
@@ -983,12 +987,12 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     #split(node: DoublyLinkedNode | undefined, n: number): DoublyLinkedNode | undefined {
         if (!node) return undefined;
 
-        for (let i = 1; i < n && this.getNext(node); i++)
-            node = this.getNext(node)!;
+        for (let i = 1; i < n && this.#getNext(node); i++)
+            node = this.#getNext(node)!;
 
-        const rest = this.getNext(node);
-        this.setNext(node, undefined);
-        if (rest) this.setPrev(rest, undefined);
+        const rest = this.#getNext(node);
+        this.#setNext(node, undefined);
+        if (rest) this.#setPrev(rest, undefined);
         return rest;
     }
 
@@ -1007,28 +1011,28 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
             const rightVal = this.#data.get(right)!;
 
             if (compare(leftVal, rightVal) <= 0) {
-                const nextLeft = this.getNext(left);   // ← salva prima
-                this.setNext(curr, left);
-                this.setPrev(left, curr);
-                this.setNext(left, undefined);          // ← spezza il vecchio link in sicurezza
+                const nextLeft = this.#getNext(left);   // ← salva prima
+                this.#setNext(curr, left);
+                this.#setPrev(left, curr);
+                this.#setNext(left, undefined);          // ← spezza il vecchio link in sicurezza
                 curr = left;
                 left = nextLeft;
             } else {
-                const nextRight = this.getNext(right);  // ← salva prima
-                this.setNext(curr, right);
-                this.setPrev(right, curr);
-                this.setNext(right, undefined);         // ← spezza il vecchio link in sicurezza
+                const nextRight = this.#getNext(right);  // ← salva prima
+                this.#setNext(curr, right);
+                this.#setPrev(right, curr);
+                this.#setNext(right, undefined);         // ← spezza il vecchio link in sicurezza
                 curr = right;
                 right = nextRight;
             }
         }
 
         const remainder = left ?? right;
-        this.setNext(curr, remainder);
-        if (remainder) this.setPrev(remainder, curr);
+        this.#setNext(curr, remainder);
+        if (remainder) this.#setPrev(remainder, curr);
 
-        const result = this.getNext(dummy);
-        if (result) this.setPrev(result, undefined);
+        const result = this.#getNext(dummy);
+        if (result) this.#setPrev(result, undefined);
         return result;
     }
 
@@ -1051,8 +1055,8 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      */
     public findLastIndex(predicate: (value: T, index: number, obj: LinkedList<T>) => boolean | undefined | null): number {
         let i = this.length - 1;
-        for (let node = this.tail; !!node; node = this.getPrev(node)) {
-            const value = this.getValue(node)!;
+        for (let node = this.#tail; !!node; node = this.#getPrev(node)) {
+            const value = this.#getValue(node)!;
             if (predicate(value, i, this)) return i;
             i--;
         }
@@ -1072,28 +1076,28 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         if (k < 0) k += this.length;
 
         let newTailIndex = this.length - k - 1;
-        let newTail = this.head;
+        let newTail = this.#head;
 
         if (newTailIndex < this.length / 2) {
-            for (let i = 0; i < newTailIndex; i++) newTail = this.getNext(newTail);
+            for (let i = 0; i < newTailIndex; i++) newTail = this.#getNext(newTail);
         } else {
-            newTail = this.tail;
-            for (let i = 0; i < (this.length - 1 - newTailIndex); i++) newTail = this.getPrev(newTail);
+            newTail = this.#tail;
+            for (let i = 0; i < (this.length - 1 - newTailIndex); i++) newTail = this.#getPrev(newTail);
         }
 
-        const newHead = this.getNext(newTail);
-        const oldHead = this.head;
-        const oldTail = this.tail;
+        const newHead = this.#getNext(newTail);
+        const oldHead = this.#head;
+        const oldTail = this.#tail;
 
         if (newHead && newTail && oldHead && oldTail) {
-            this.setNext(oldTail, oldHead);
-            this.setPrev(oldHead, oldTail);
+            this.#setNext(oldTail, oldHead);
+            this.#setPrev(oldHead, oldTail);
 
-            this.head = newHead;
-            this.tail = newTail;
+            this.#head = newHead;
+            this.#tail = newTail;
 
-            this.setPrev(this.head, undefined);
-            this.setNext(this.tail, undefined);
+            this.#setPrev(this.#head, undefined);
+            this.#setNext(this.#tail, undefined);
         }
 
         return this;
@@ -1112,22 +1116,22 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     }
 
     #filterInPlace(predicate: (value: T, index: number, obj: this) => boolean): this {
-        let node = this.head;
+        let node = this.#head;
         let i = 0;
 
         while (node) {
-            const val = this.getValue(node)!;
-            const next = this.getNext(node);
+            const val = this.#getValue(node)!;
+            const next = this.#getNext(node);
 
             if (!predicate(val, i++, this)) {
-                const p = this.getPrev(node);
-                const n = this.getNext(node);
+                const p = this.#getPrev(node);
+                const n = this.#getNext(node);
 
-                if (p) this.setNext(p, n);
-                else this.head = n;
+                if (p) this.#setNext(p, n);
+                else this.#head = n;
 
-                if (n) this.setPrev(n, p);
-                else this.tail = p;
+                if (n) this.#setPrev(n, p);
+                else this.#tail = p;
 
                 this.#data.delete(node);
                 this.#length--;
@@ -1151,16 +1155,16 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * Returns an iterator for the values of the list.
      */
     public *values(): IterableIterator<T> {
-        for (let node = this.head; !!node; node = this.getNext(node))
-            yield this.getValue(node)!;
+        for (let node = this.#head; !!node; node = this.#getNext(node))
+            yield this.#getValue(node)!;
     }
 
     /**
      * Returns an iterator for key-value pairs of the list.
      */
     public *entries(): IterableIterator<[number, T]> {
-        for (let node = this.head, i = 0; !!node && i < this.length; node = this.getNext(node), i++)
-            yield [i, this.getValue(node)!];
+        for (let node = this.#head, i = 0; !!node && i < this.length; node = this.#getNext(node), i++)
+            yield [i, this.#getValue(node)!];
     }
 
     /**

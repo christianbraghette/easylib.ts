@@ -1,6 +1,6 @@
 {
   "name": "@easylib.ts/eventemitter",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "Typescript native EventEmitter",
   "keywords": [],
   "homepage": "https://github.com/christianbraghette/easylib.ts#readme",

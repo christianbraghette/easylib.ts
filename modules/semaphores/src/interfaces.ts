@@ -32,10 +32,6 @@ export interface Lock extends Disposable, AsyncDisposable {
     readonly release: ReleaseFunction;
 }
 
-export interface VarLock<T> extends Lock {
-    value: T;
-}
-
 /**
  * Semaphore provides a synchronization primitive that controls access
  * to a finite number of resources (permits).
@@ -52,10 +48,8 @@ export interface Semaphore {
 
     /**
      * Returns the number of tasks currently waiting in the queue.
-     *
-     * Useful for debugging or monitoring contention.
      */
-    readonly waitersCount: number;
+    readonly waiters: number;
 
     /**
      * Attempt to acquire the mutex.
@@ -69,9 +63,8 @@ export interface Semaphore {
      * The returned `release` function **must** be called once the critical
      * section is finished to unblock the next waiting task.
      */
-    acquire(): Promise<Lock>
+    acquire(timeoutMs?: number): Promise<Lock>
     acquire(signal: AbortSignal): Promise<Lock>
-    acquire(callbackfn: (release: ReleaseFunction) => void): void
 
     /**
      * Non-blocking version of acquire.
@@ -114,7 +107,8 @@ export interface Semaphore {
      * @param fn Async or sync function to execute exclusively.
      * @returns The result of `fn`.
      */
-    run<T>(fn: () => Promise<T> | T, ms?: number): Promise<T>;
+    run(fn: (release: ReleaseFunction) => void | Promise<void>): void
+    run<T>(fn: ((release: ReleaseFunction) => Promise<T> | T), ms?: number): Promise<T>
 }
 
 /**

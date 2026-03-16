@@ -1,6 +1,6 @@
 {
   "name": "@easylib.ts/atomics",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Typescript wrapper for Atomics",
   "keywords": [],
   "homepage": "https://github.com/christianbraghette/easylib.ts#readme",

@@ -17,7 +17,12 @@
  */
 
 import { FlattenStep } from ".";
+import { ArrayList, LinkedList } from "./list";
+import { HashMap, TreeMap } from "./map";
 import type { Pipeline } from "./pipeline";
+import { LinkedQueue, PriorityQueue } from "./queue";
+import { HashSet, TreeSet } from "./set";
+import { LinkedStack } from "./stack";
 
 export interface ConcatIterable<T> extends Iterable<T> {
     [Symbol.isConcatSpreadable]: boolean;
@@ -31,16 +36,43 @@ export abstract class Collection<K, V> {
     abstract values(): IterableIterator<V>;
     abstract entries(): IterableIterator<[K, V]>;
 
-    abstract toJSON(): [K, V][] | V[];
-
     abstract pipe(): Pipeline<V, 'sync'> | Pipeline<[K, V], 'sync'>;
     abstract pipe<U>(transformer: ((source: Pipeline<V, 'sync'>) => Pipeline<U, 'sync'>) | ((source: Pipeline<[K, V], 'sync'>) => Pipeline<[K, U], 'sync'>)): Collection<K, U>;
 
     abstract [Symbol.iterator](): IterableIterator<V | [K, V]>;
     abstract [Symbol.toStringTag]: string;
 
+    toJSON(): [K, V][] | V[] {
+        return [...this] as [K, V][] | V[];
+    }
+
     get [Symbol.isConcatSpreadable](): boolean {
         return true;
+    }
+}
+export namespace Collection {
+    export function isCollection(obj: Object): boolean {
+        return obj instanceof Collection;
+    }
+
+    export function isList(obj: Object): boolean {
+        return obj instanceof ArrayList || obj instanceof LinkedList;
+    }
+
+    export function isMap(obj: Object): boolean {
+        return obj instanceof HashMap || obj instanceof TreeMap;
+    }
+
+    export function isQueue(obj: Object): boolean {
+        return obj instanceof LinkedQueue || obj instanceof PriorityQueue || obj instanceof LinkedList;
+    }
+
+    export function isSet(obj: Object): boolean {
+        return obj instanceof HashSet || obj instanceof TreeSet;
+    }
+
+    export function isStack(obj: Object): boolean {
+        return obj instanceof LinkedStack || obj instanceof LinkedList;
     }
 }
 

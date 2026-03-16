@@ -16,7 +16,13 @@
  * limitations under the License.
  */
 
-import type { ReleaseFunction, VarLock, Lock, Semaphore } from "./interfaces";
+import type { ReleaseFunction, Lock, Semaphore, Mutex } from "./interfaces";
+
+if (!Symbol.dispose)
+    (Symbol as any).dispose = Symbol("Symbol.dispose");
+
+if (!Symbol.asyncDispose)
+    (Symbol as any).asyncDispose = Symbol("Symbol.asyncDispose");
 
 class QueueNode {
     constructor(public next?: QueueNode, public prev?: QueueNode) { }
@@ -108,100 +114,74 @@ export class AsyncSemaphore implements Semaphore {
         this.#maxCount = count;
     }
 
-    public acquire(): Promise<Lock>
+    public get locked(): boolean {
+        return this.#count < 1;
+    };
+
+    public get waiters(): number {
+        return this.#queue.length;
+    }
+
+    public acquire(timeoutMs?: number): Promise<Lock>
     public acquire(signal: AbortSignal): Promise<Lock>
-    public acquire(callbackfn: (release: ReleaseFunction) => void): void
-    public acquire(callbackfn?: ((release: ReleaseFunction) => void) | AbortSignal): Promise<Lock> | void {
-        if (typeof callbackfn === 'function') {
-            this.acquire().then((release) => {
-                callbackfn(release.release);
-                release.release();
-            }).catch((error) => { throw error; });
-            return;
+    public acquire(arg?: AbortSignal | number): Promise<Lock> | void {
+        if (this.#count > 0) {
+            this.#count--;
+            return Promise.resolve<Lock>(new AsyncSemaphore.Lock(this));
         }
-        if (this.#count-- > 0)
-            return Promise.resolve(this.#createLock());
         return new Promise((resolve, reject) => {
             const entry = { resolve, reject };
+            this.#count--;
 
-            if (callbackfn instanceof AbortSignal) {
-                if (callbackfn.aborted)
-                    return reject(new Error("Acquire aborted"));
+            let timeoutId: any;
+            let abortSignal: AbortSignal | undefined;
 
-                let handler = () => {
-                    this.#queue.remove(entry);
-                    reject(new Error("Acquire aborted"));
+            if (arg instanceof AbortSignal) {
+                abortSignal = arg;
+            } else if (typeof arg === 'number') {
+                const controller = new AbortController();
+                timeoutId = setTimeout(() => controller.abort(), arg);
+                abortSignal = controller.signal;
+            }
+
+            if (abortSignal) {
+                if (abortSignal.aborted) {
+                    this.#count++;
+                    return reject(new Error(typeof arg === 'number' ? "Acquire timeout" : "Acquire aborted"));
                 }
 
-                callbackfn.addEventListener('abort', handler, { once: true })
+                const abortHandler = () => {
+                    if (timeoutId) clearTimeout(timeoutId);
+                    if (this.#queue.remove(entry)) {
+                        this.#count++;
+                    }
+                    reject(new Error(typeof arg === 'number' ? "Acquire timeout" : "Acquire aborted"));
+                };
+
+                abortSignal.addEventListener('abort', abortHandler, { once: true });
+
+                entry.resolve = (lock: Lock | PromiseLike<Lock>) => {
+                    if (timeoutId) clearTimeout(timeoutId);
+                    abortSignal?.removeEventListener('abort', abortHandler);
+                    resolve(lock);
+                };
             }
 
             this.#queue.push(entry);
         });
     }
 
-    #createLock(released = false): Lock {
-        class LockConstructor implements Lock {
-            #released: boolean;
-
-            constructor(semaphore: AsyncSemaphore)
-            constructor(semaphore?: AsyncSemaphore, released?: boolean)
-            constructor(semaphore?: AsyncSemaphore, released: boolean = false) {
-                this.#released = released;
-                this.release = semaphore ? () => {
-                    if (this.#released) return;
-                    this.#released = true;
-                    if (semaphore.#count++ < 0)
-                        semaphore.#queue.shift()?.resolve(semaphore.#createLock());
-                } : () => {
-                    if (this.#released) return;
-                    this.#released = true;
-                }
-            }
-
-            declare public readonly release: ReleaseFunction;
-
-            public get locked() {
-                return !this.#released;
-            }
-
-            [Symbol.dispose]() {
-                this.release();
-            }
-
-            async [Symbol.asyncDispose]() {
-                this.release();
-            }
-
-            public static released(): Lock {
-                return new LockConstructor(undefined, true);
-            }
-
-        }
-
-        if (released)
-            return new LockConstructor(undefined, released);
-        return new LockConstructor(this);
-    }
-
     public tryAcquire(): Lock | undefined {
-        if (this.#count-- > 0)
-            return this.#createLock();
-        this.#count++;
+        if (this.#count > 0) {
+            this.#count--;
+            return new AsyncSemaphore.Lock(this);
+        }
         return;
-    }
-
-    public get locked(): boolean {
-        return this.#count < 1;
-    };
-
-    public get waitersCount(): number {
-        return this.#queue.length;
     }
 
     public releaseAll(): void {
         while (this.#queue.length > 0)
-            this.#queue.shift()?.resolve(this.#createLock(true));
+            this.#queue.shift()?.resolve(new AsyncSemaphore.Lock(undefined, true));
         this.#count = this.#maxCount;
     }
 
@@ -211,34 +191,60 @@ export class AsyncSemaphore implements Semaphore {
         this.#count = this.#maxCount;
     }
 
-    public async run<T>(fn: () => Promise<T> | T, ms?: number): Promise<T> {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), ms);
-
+    public async run<T>(callbackFn: (release: ReleaseFunction) => Promise<T> | T, ms?: number): Promise<T> {
+        const lock = await this.acquire(ms);
         try {
-            const lock = await this.acquire(controller.signal);
-            try {
-                return await fn();
-            } finally {
-                lock.release();
-            }
-        } catch (err) {
-            if (err instanceof Error && err.message === "Acquire aborted") {
-                throw new Error("Mutex timeout");
-            }
-            throw err; // qualsiasi altro errore viene propagato
+            return await callbackFn(lock.release);
         } finally {
-            clearTimeout(timer);
+            lock.release();
         }
+    }
+
+    private static Lock = class implements Lock {
+        #released: boolean;
+
+        constructor(semaphore: AsyncSemaphore)
+        constructor(semaphore?: AsyncSemaphore, released?: boolean)
+        constructor(semaphore?: AsyncSemaphore, released: boolean = false) {
+            this.#released = released;
+            this.release = semaphore ? () => {
+                if (this.#released) return;
+                this.#released = true;
+                if (semaphore.#count++ < 0)
+                    semaphore.#queue.shift()?.resolve(new AsyncSemaphore.Lock(semaphore));
+            } : () => {
+                if (this.#released) return;
+                this.#released = true;
+            }
+        }
+
+        declare public readonly release: ReleaseFunction;
+
+        public get locked() {
+            return !this.#released;
+        }
+
+        [Symbol.dispose]() {
+            this.release();
+        }
+
+        async [Symbol.asyncDispose]() {
+            this.release();
+        }
+
+        public static release(): Lock {
+            return new AsyncSemaphore.Lock(undefined, true);
+        }
+
     }
 }
 
-export class AsyncMutex extends AsyncSemaphore {
+export class AsyncMutex extends AsyncSemaphore implements Mutex {
     public constructor() {
         super(1);
     }
 
-    public accessor maxCount = 1;
+    public accessor maxCount: 1 = 1;
 }
 
 export type * from "./interfaces";

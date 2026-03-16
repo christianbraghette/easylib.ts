@@ -19,36 +19,38 @@
 import type { ReleaseFunction, Lock, Semaphore, Mutex } from "./interfaces";
 import { AtomicInt32 } from "@easylib.ts/atomics";
 
-export class ThreadSemaphore implements Semaphore {
+if (!Symbol.dispose)
+    (Symbol as any).dispose = Symbol("Symbol.dispose");
 
-    public constructor(private readonly count: AtomicInt32, private _maxCount: number, initialized = false) {
-        if (count.MAX < _maxCount + 2)
+if (!Symbol.asyncDispose)
+    (Symbol as any).asyncDispose = Symbol("Symbol.asyncDispose");
+
+export class ThreadSemaphore implements Semaphore {
+    readonly #count: AtomicInt32;
+    #maxCount: number;
+
+    public constructor(count: AtomicInt32, maxCount: number, initialized = false) {
+        this.#count = count;
+        this.#maxCount = maxCount;
+        if (count.MAX < maxCount + 2)
             throw new Error("maxCount out of bound");
         if (!initialized)
-            this.count.set(_maxCount);
+            this.#count.set(maxCount);
     }
 
     public get maxCount(): number {
-        return this._maxCount;
+        return this.#maxCount;
     }
 
     public set maxCount(count: number) {
-        this.count.add(count - this.maxCount);
-        this.count.notify(count - this.maxCount);
-        this._maxCount = count;
+        this.#count.add(count - this.maxCount);
+        this.#count.notify(count - this.maxCount);
+        this.#maxCount = count;
     }
 
-    public acquire(): Promise<Lock>
+    public acquire(timeoutMs?: number): Promise<Lock>
     public acquire(signal: AbortSignal): Promise<Lock>
-    public acquire(callbackfn: (release: ReleaseFunction) => void): void
-    public acquire(callbackfn?: ((release: ReleaseFunction) => void) | AbortSignal): Promise<Lock> | void {
-        if (typeof callbackfn === 'function') {
-            this.acquire().then((release) => {
-                callbackfn(release.release);
-                release.release();
-            }).catch((error) => { throw error; });
-            return;
-        }
+    public acquire(callbackfn?: AbortSignal | number): Promise<Lock> | void {
         return new Promise((resolve, reject) => {
             if (callbackfn instanceof AbortSignal) {
                 if (callbackfn.aborted)
@@ -57,10 +59,10 @@ export class ThreadSemaphore implements Semaphore {
                 callbackfn.addEventListener('abort', () => reject(new Error("Acquire aborted")), { once: true })
             }
 
-            if (!this.count.waitAsync?.(this.count.sub()).then(res => {
+            if (!this.#count.waitAsync?.(this.#count.sub()).then(res => {
                 if (res !== 'ok')
                     return reject(res);
-                return resolve(this.createLock());
+                return resolve(new ThreadSemaphore.Lock(this));
             })) {
                 let lock: Lock | undefined;
                 while (!lock) lock = this.tryAcquire();
@@ -69,92 +71,74 @@ export class ThreadSemaphore implements Semaphore {
         });
     }
 
-    private createLock(released = false): Lock {
-        class LockConstructor implements Lock {
-            #released: boolean;
-
-            constructor(semaphore: ThreadSemaphore)
-            constructor(semaphore?: ThreadSemaphore, released?: boolean)
-            constructor(semaphore?: ThreadSemaphore, released: boolean = false) {
-                this.#released = released;
-                this.release = semaphore ? () => {
-                    if (this.#released) return;
-                    this.#released = true;
-                    semaphore.count.add();
-                    semaphore.count.notify(1);
-                } : () => {
-                    if (this.#released) return;
-                    this.#released = true;
-                }
-            }
-
-            declare public readonly release: ReleaseFunction;
-
-            public get locked() {
-                return !this.#released;
-            }
-
-            [Symbol.dispose]() {
-                this.release();
-            }
-
-            async [Symbol.asyncDispose]() {
-                this.release();
-            }
-
-            public static released(): Lock {
-                return new LockConstructor(undefined, true);
-            }
-
-        }
-
-        if (released)
-            return new LockConstructor(undefined, released);
-        return new LockConstructor(this);
-    }
-
     public tryAcquire(): Lock | undefined {
-        if (this.count.sub() > 0)
-            return this.createLock();
-        this.count.add();
+        if (this.#count.sub() > 0)
+            return new ThreadSemaphore.Lock(this);
+        this.#count.add();
         return;
     }
 
     public get locked(): boolean {
-        return this.count.get() < 1;
+        return this.#count.get() < 1;
     };
 
-    public get waitersCount(): number {
-        return this._maxCount - this.count.get();
+    public get waiters(): number {
+        return this.#maxCount - this.#count.get();
     }
 
     public releaseAll(): void {
-        this.count.set(this._maxCount + 1);
+        this.#count.set(this.#maxCount + 1);
     }
 
     public reset(): void {
-        this.count.set(this._maxCount + 2);
+        this.#count.set(this.#maxCount + 2);
     }
 
-    public async run<T>(fn: () => Promise<T> | T, ms: number): Promise<T> {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), ms);
-
+    public async run<T>(fn: (release: ReleaseFunction) => Promise<T> | T, ms?: number): Promise<T> {
+        const lock = await this.acquire(ms);
         try {
-            const lock = await this.acquire(controller.signal);
-            try {
-                return await fn();
-            } finally {
-                lock.release();
-            }
-        } catch (err) {
-            if (err instanceof Error && err.message === "Acquire aborted") {
-                throw new Error("Mutex timeout");
-            }
-            throw err;
+            return await fn(lock.release);
         } finally {
-            clearTimeout(timer);
+            lock.release();
         }
+    }
+
+    private static Lock = class implements Lock {
+        #released: boolean;
+
+        constructor(semaphore: ThreadSemaphore)
+        constructor(semaphore?: ThreadSemaphore, released?: boolean)
+        constructor(semaphore?: ThreadSemaphore, released: boolean = false) {
+            this.#released = released;
+            this.release = semaphore ? () => {
+                if (this.#released) return;
+                this.#released = true;
+                semaphore.#count.add();
+                semaphore.#count.notify(1);
+            } : () => {
+                if (this.#released) return;
+                this.#released = true;
+            }
+        }
+
+        declare public readonly release: ReleaseFunction;
+
+        public get locked() {
+            return !this.#released;
+        }
+
+        [Symbol.dispose]() {
+            this.release();
+        }
+
+        async [Symbol.asyncDispose]() {
+            this.release();
+        }
+
+        public static released(): Lock {
+            return new ThreadSemaphore.Lock(undefined, true);
+        }
+
     }
 }
 

@@ -593,7 +593,7 @@ export class SyncPipelineConstructor<T> implements Pipeline<T, 'sync'> {
         })
     }
 
-    [Symbol.iterator]() {
+    [Symbol.iterator](): IterableIterator<T> {
         return this.sink();
     }
 
@@ -1046,7 +1046,7 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
         })
     }
 
-    [Symbol.asyncIterator]() {
+    [Symbol.asyncIterator](): AsyncIterableIterator<T> {
         return this.sink();
     }
 
