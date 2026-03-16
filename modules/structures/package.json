@@ -79,8 +79,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "prepare": "tsc",
-    "pretest": "tsc",
+    "prepare": "tsc -b",
+    "pretest": "tsc -b",
     "test": "node ./dist/test.js"
   },
   "dependencies": {

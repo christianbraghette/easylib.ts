@@ -6,22 +6,22 @@
     },
     "references": [
         {
-            "path": "./packages/eventemitter"
+            "path": "./modules/eventemitter"
         },
         {
-            "path": "./packages/idb"
+            "path": "./modules/idb"
         },
         {
-            "path": "./packages/atomics"
+            "path": "./modules/atomics"
         },
         {
-            "path": "./packages/semaphores"
+            "path": "./modules/semaphores"
         },
         {
-            "path": "./packages/structures"
+            "path": "./modules/structures"
         },
         {
-            "path": "./packages/threads"
+            "path": "./modules/threads"
         }
     ]
 }

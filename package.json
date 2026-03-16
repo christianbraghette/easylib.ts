@@ -17,7 +17,7 @@
   "type": "commonjs",
   "main": "index.js",
   "workspaces": [
-    "packages/*"
+    "modules/*"
   ],
   "scripts": {
     "build": "tsc -b",

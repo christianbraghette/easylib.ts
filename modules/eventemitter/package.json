@@ -1,7 +1,7 @@
 {
-  "name": "@easylib.ts/atomics",
-  "version": "1.0.0",
-  "description": "Typescript wrapper for Atomics",
+  "name": "@easylib.ts/eventemitter",
+  "version": "1.2.2",
+  "description": "Typescript native EventEmitter",
   "keywords": [],
   "homepage": "https://github.com/christianbraghette/easylib.ts#readme",
   "bugs": {
@@ -22,11 +22,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "prepare": "tsc",
-    "pretest": "tsc",
+    "prepare": "tsc -b",
+    "pretest": "tsc -b",
     "test": "node ./dist/test.js"
-  },
-  "devDependencies": {
-    "@types/node": "^25.4.0"
   }
 }
