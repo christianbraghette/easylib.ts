@@ -105,11 +105,34 @@ export type Pipeline<T, A extends 'sync' | 'async'> = BasePipeline<T, A> & (A ex
 export namespace Pipeline {
     export function from<T>(iterable: Iterable<T>): Pipeline<T, 'sync'>
     export function from<T>(iterable: AsyncIterable<T>): Pipeline<T, 'async'>
+    export function from<T>(iterable: ReadableStream<T>): Pipeline<T, 'async'>
     export function from<T, R extends 'sync' | 'async' = 'async'>(iterable: AsyncIterable<T> & Iterable<T>, hint?: R): Pipeline<T, R>
     export function from<T>(iterable: AsyncIterable<T> | Iterable<T>, hint?: 'sync' | 'async'): Pipeline<T, 'sync' | 'async'> {
         if (Symbol.asyncIterator in iterable && hint !== 'sync')
             return new AsyncPipelineConstructor(iterable);
         return new SyncPipelineConstructor(iterable as Iterable<T>);
+    }
+
+    export function iterator<T>(startValue: T, callbackfn: (previousValue: T) => T, terminationfn?: (previousValue: T) => unknown): Pipeline<T, 'sync'> {
+        return new SyncPipelineConstructor((function* () {
+            let currentValue = startValue;
+            yield currentValue;
+            while (!terminationfn?.(currentValue)) {
+                currentValue = callbackfn(currentValue);
+                yield currentValue;
+            }
+        })())
+    }
+
+    export function asyncIterator<T>(startValue: T, callbackfn: (previousValue: T) => T | Promise<T>, terminationfn?: (currentValue: T) => unknown | Promise<unknown>): Pipeline<T, 'async'> {
+        return new AsyncPipelineConstructor<T>((async function* () {
+            let currentValue = startValue;
+            yield currentValue;
+            while (!await terminationfn?.(currentValue)) {
+                currentValue = await callbackfn(currentValue);
+                yield currentValue;
+            }
+        })())
     }
 }
 
