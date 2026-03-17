@@ -20,6 +20,10 @@ import { Collection, type Set as SetInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
 import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
+export function isSet(obj: Object): boolean {
+    return obj instanceof HashSet || obj instanceof TreeSet;
+}
+
 export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
     #set: Set<T>;
 

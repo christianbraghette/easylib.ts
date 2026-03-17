@@ -20,6 +20,10 @@ import { Collection, type Map as MapInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
 import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
+export function isMap(obj: Object): boolean {
+    return obj instanceof HashMap || obj instanceof TreeMap;
+}
+
 export class HashMap<K, V> extends Collection<K, V> implements MapInterface<K, V> {
     #map: Map<K, V>;
 

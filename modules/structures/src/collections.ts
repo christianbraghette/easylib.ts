@@ -17,12 +17,7 @@
  */
 
 import { FlattenStep } from ".";
-import { ArrayList, LinkedList } from "./list";
-import { HashMap, TreeMap } from "./map";
 import type { Pipeline } from "./pipeline";
-import { LinkedQueue, PriorityQueue } from "./queue";
-import { HashSet, TreeSet } from "./set";
-import { LinkedStack } from "./stack";
 
 export interface ConcatIterable<T> extends Iterable<T> {
     [Symbol.isConcatSpreadable]: boolean;
@@ -50,30 +45,9 @@ export abstract class Collection<K, V> {
         return true;
     }
 }
-export namespace Collection {
-    export function isCollection(obj: Object): boolean {
-        return obj instanceof Collection;
-    }
 
-    export function isList(obj: Object): boolean {
-        return obj instanceof ArrayList || obj instanceof LinkedList;
-    }
-
-    export function isMap(obj: Object): boolean {
-        return obj instanceof HashMap || obj instanceof TreeMap;
-    }
-
-    export function isQueue(obj: Object): boolean {
-        return obj instanceof LinkedQueue || obj instanceof PriorityQueue || obj instanceof LinkedList;
-    }
-
-    export function isSet(obj: Object): boolean {
-        return obj instanceof HashSet || obj instanceof TreeSet;
-    }
-
-    export function isStack(obj: Object): boolean {
-        return obj instanceof LinkedStack || obj instanceof LinkedList;
-    }
+export function isCollection(obj: Object): boolean {
+    return obj instanceof Collection;
 }
 
 export interface NonLinear<K, V> extends Collection<K, V> {

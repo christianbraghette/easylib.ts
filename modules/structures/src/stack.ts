@@ -17,7 +17,12 @@
  */
 
 import { Collection, type Stack } from "./collections"
+import { LinkedList } from "./list";
 import { Pipeline, SyncPipelineConstructor } from "./pipeline";
+
+export function isStack(obj: Object): boolean {
+    return obj instanceof LinkedStack || obj instanceof LinkedList;
+}
 
 class StackNode {
     constructor(public next?: StackNode, public prev?: StackNode) { }
