@@ -39,7 +39,7 @@ export abstract class Collection<K, V> {
     abstract pipe(): Pipeline<V, 'sync'> | Pipeline<[K, V], 'sync'>;
     abstract pipe<U>(transformer: ((source: Pipeline<V, 'sync'>) => Pipeline<U, 'sync'>) | ((source: Pipeline<[K, V], 'sync'>) => Pipeline<[K, U], 'sync'>)): Collection<K, U>;
 
-    abstract [Symbol.iterator](): IterableIterator<V | [K, V]>;
+    abstract [Symbol.iterator](): IterableIterator<V> | IterableIterator<[K, V]>;
     abstract [Symbol.toStringTag]: string;
 
     toJSON(): [K, V][] | V[] {
@@ -129,23 +129,22 @@ export interface Functionals<K, V> {
     forEach(callbackfn: (value: V, key: K, obj: Collection<K, V>) => void): void;
     map<U>(callbackfn: (value: V, key: K, obj: Collection<K, V>) => U): Collection<K, U> | Collection<U, U>;
     reduce<U>(callbackfn: (previousValue: U, currentValue: V, currentKey: K, obj: Collection<K, V>) => U, initialValue: U): U;
-    every(predicate: (value: V, key: K, obj: Collection<K, V>) => boolean | undefined | null): boolean;
-    some(predicate: (value: V, key: K, obj: Collection<K, V>) => boolean | undefined | null): boolean;
-    filter<S extends V>(predicate: (value: V, key: K, obj: Collection<K, V>) => boolean | undefined | null): Collection<K, S>;
-    filter(predicate: (value: V, key: K, obj: Collection<K, V>) => boolean | undefined | null): Collection<K, V>;
-    find<S extends V>(predicate: (value: V, key: K, obj: Collection<K, V>) => boolean | undefined | null): S | undefined;
+    every(predicate: (value: V, key: K, obj: Collection<K, V>) => unknown): boolean;
+    some(predicate: (value: V, key: K, obj: Collection<K, V>) => unknown): boolean;
+    filter<S extends V>(predicate: (value: V, key: K, obj: Collection<K, V>) => unknown): any;
+    find<S extends V>(predicate: (value: V, key: K, obj: Collection<K, V>) => unknown): S | undefined;
 }
 
 export interface LinearFunctionals<K, V> extends Functionals<K, V> {
-    findLast<S extends V>(predicate: (value: V, key: K, obj: Linear<K, V>) => boolean | undefined | null): S | undefined;
+    findLast<S extends V>(predicate: (value: V, key: K, obj: Linear<K, V>) => unknown): S | undefined;
     reduceRight<U>(callbackfn: (previousValue: U, currentValue: V, currentKey: K, obj: Linear<K, V>) => U, initialValue: U): U;
     flat<D extends number = 1>(depth?: D): Linear<K, FlattenStep<V, D>>;
     flatMap<U>(callbackfn: (value: V, key: K, obj: Linear<K, V>) => U | Iterable<U>): Linear<K, U>;
 }
 
 export interface IndexableFunctionals<V> extends LinearFunctionals<number, V> {
-    findIndex(predicate: (value: V, index: number, obj: Indexable<V>) => boolean | undefined | null): number;
-    findLastIndex(predicate: (value: V, index: number, obj: Indexable<V>) => boolean | undefined | null): number;
+    findIndex(predicate: (value: V, index: number, obj: Indexable<V>) => unknown): number;
+    findLastIndex(predicate: (value: V, index: number, obj: Indexable<V>) => unknown): number;
 }
 
 export interface Stack<T> extends LIFO<T>, Linear<number, T> {
@@ -184,8 +183,4 @@ export interface Set<V> extends NonLinear<V, V>, Functionals<V, V> {
     isSubsetOf(other: Set<V>): boolean
 
     [Symbol.iterator](): IterableIterator<V>;
-}
-
-export interface SortedSet<V> extends Set<V> {
-    map<U>(callbackfn: (value: V, key: V, obj: SortedSet<V>) => U, newCompareFn?: (a: U, b: U) => number): SortedSet<U>;
 }

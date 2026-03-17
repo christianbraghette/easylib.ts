@@ -186,7 +186,7 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
         return new ArrayList<U>(this.#items.map((v, i) => callbackfn(v, i, this)));
     }
 
-    public filter<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => boolean | undefined | null): ArrayList<S> {
+    public filter<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): ArrayList<S> {
         return new ArrayList<S>(this.#items.filter((v, i) => predicate(v, i, this)) as S[]);
     }
 
@@ -194,19 +194,19 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
         return this.#items.reduce((acc, curr, i) => callbackfn(acc, curr, i, this), initialValue);
     }
 
-    public every(predicate: (value: T, key: number, obj: ArrayList<T>) => boolean | undefined | null): boolean {
+    public every(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): boolean {
         return this.#items.every((v, i) => !!predicate(v, i, this));
     }
 
-    public some(predicate: (value: T, key: number, obj: ArrayList<T>) => boolean | undefined | null): boolean {
+    public some(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): boolean {
         return this.#items.some((v, i) => !!predicate(v, i, this));
     }
 
-    public find<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => boolean | undefined | null): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): S | undefined {
         return this.#items.find((v, i) => predicate(v, i, this)) as S | undefined;
     }
 
-    public findLast<S extends T>(predicate: (value: T, index: number, obj: ArrayList<T>) => boolean | undefined | null): S | undefined {
+    public findLast<S extends T>(predicate: (value: T, index: number, obj: ArrayList<T>) => unknown): S | undefined {
         for (let i = this.length - 1; i >= 0; i--) {
             const value = this.#items[i];
             if (predicate(value as T, i, this)) {
@@ -216,11 +216,11 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
         return undefined;
     }
 
-    public findIndex(predicate: (value: T, index: number, obj: ArrayList<T>) => boolean | undefined | null): number {
+    public findIndex(predicate: (value: T, index: number, obj: ArrayList<T>) => unknown): number {
         return this.#items.findIndex((v, i) => predicate(v, i, this));
     }
 
-    public findLastIndex(predicate: (value: T, index: number, obj: ArrayList<T>) => boolean | undefined | null): number {
+    public findLastIndex(predicate: (value: T, index: number, obj: ArrayList<T>) => unknown): number {
         for (let i = this.length - 1; i >= 0; i--) {
             if (predicate(this.#items[i] as T, i, this)) {
                 return i;
@@ -798,7 +798,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Creates a new list with all elements that pass the test implemented by the provided function.
      */
-    public filter<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => boolean | undefined | null): LinkedList<S> {
+    public filter<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => unknown): LinkedList<S> {
         const self = this;
         const filteredGenerator = function* () {
             let i = 0;
@@ -825,7 +825,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Tests whether all elements in the list pass the test implemented by the provided function.
      */
-    public every(predicate: (value: T, key: number, obj: LinkedList<T>) => boolean | undefined | null): boolean {
+    public every(predicate: (value: T, key: number, obj: LinkedList<T>) => unknown): boolean {
         let i = 0;
         for (const value of this.values()) {
             if (!predicate(value, i++, this)) return false;
@@ -836,7 +836,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Tests whether at least one element in the list passes the test implemented by the provided function.
      */
-    public some(predicate: (value: T, key: number, obj: LinkedList<T>) => boolean | undefined | null): boolean {
+    public some(predicate: (value: T, key: number, obj: LinkedList<T>) => unknown): boolean {
         let i = 0;
         for (const value of this.values()) {
             if (predicate(value, i++, this)) return true;
@@ -847,7 +847,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Returns the value of the first element that satisfies the provided testing function.
      */
-    public find<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => boolean | undefined | null): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: number, obj: LinkedList<T>) => unknown): S | undefined {
         let i = 0;
         for (const value of this.values()) {
             if (predicate(value, i++, this)) return value as S;
@@ -860,7 +860,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Returns the value of the last element that satisfies the provided testing function.
      */
-    public findLast<S extends T>(predicate: (value: T, index: number, obj: LinkedList<T>) => boolean | undefined | null): S | undefined {
+    public findLast<S extends T>(predicate: (value: T, index: number, obj: LinkedList<T>) => unknown): S | undefined {
         let i = this.length - 1;
         for (let node = this.#tail; !!node; node = this.#getPrev(node)) {
             const value = this.#getValue(node) as T;
@@ -1041,7 +1041,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Returns the index of the first element that satisfies the provided testing function.
      */
-    public findIndex(predicate: (value: T, index: number, obj: LinkedList<T>) => boolean | undefined | null): number {
+    public findIndex(predicate: (value: T, index: number, obj: LinkedList<T>) => unknown): number {
         let i = 0;
         for (const value of this.values()) {
             if (predicate(value, i, this)) return i;
@@ -1053,7 +1053,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Returns the index of the last element that satisfies the provided testing function.
      */
-    public findLastIndex(predicate: (value: T, index: number, obj: LinkedList<T>) => boolean | undefined | null): number {
+    public findLastIndex(predicate: (value: T, index: number, obj: LinkedList<T>) => unknown): number {
         let i = this.length - 1;
         for (let node = this.#tail; !!node; node = this.#getPrev(node)) {
             const value = this.#getValue(node)!;

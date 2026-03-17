@@ -16,8 +16,7 @@
  * limitations under the License.
  */
 
-import { FlattenStep, Tuple } from ".";
-import { AsyncIterables, Iterables } from "./iterables";
+import { FlattenStep } from ".";
 import { LinkedList } from "./list";
 import { HashMap } from "./map";
 import { HashSet } from "./set";
@@ -49,8 +48,7 @@ interface BasePipeline<T, A extends 'sync' | 'async'> {
     limit(count: number): Pipeline<T, A>
 
     map<U>(callbackfn: (value: T, index: number) => U): Pipeline<U, A>
-    filter<S extends T>(predicate: (value: T, index: number) => boolean | undefined | null): Pipeline<S, A>;
-    filter(predicate: (value: T, index: number) => boolean | undefined | null): Pipeline<T, A>;
+    filter<S extends T>(predicate: (value: T, index: number) => unknown): Pipeline<S, A>;
     flat<D extends number = 1>(depth?: D): Pipeline<FlattenStep<T, D>, A>
     flatMap<U>(callbackfn: (value: T, index: number) => U | Iterable<U>): Pipeline<U, A>
     peek(callbackfn: (value: T, index: number) => void, returnFn?: () => void): Pipeline<T, A>
@@ -66,38 +64,38 @@ interface BasePipeline<T, A extends 'sync' | 'async'> {
 }
 
 interface SyncPipeline<T> extends Iterable<T> {
-    combine<S extends Tuple<any>, U>(combineFn: (value: T, ...values: S) => U, ...others: Iterable<S[keyof S]>[]): Pipeline<U, 'sync'>
+    combine<S>(...others: Iterable<S>[]): Pipeline<(T | S | undefined)[], 'sync'>
     join<S>(...others: Iterable<S>[]): Pipeline<T | S, 'sync'>
     forEach(callbackfn: (value: T, index: number) => void): void
     reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentKey: number) => U, initialValue: U): U
-    every(predicate: (value: T, index: number) => boolean | undefined | null): boolean
-    find<S extends T>(predicate: (value: T, index: number) => boolean | undefined | null): S | undefined
-    some(predicate: (value: T, index: number) => boolean | undefined | null): boolean
+    every(predicate: (value: T, index: number) => unknown): boolean
+    find<S extends T>(predicate: (value: T, index: number) => unknown): S | undefined
+    some(predicate: (value: T, index: number) => unknown): boolean
     collect<C>(collector: (iterable: Iterable<T>) => C): C
     count(): number
     min(compareFn?: (a: T, b: T) => number): T | undefined
     max(compareFn?: (a: T, b: T) => number): T | undefined
     groupby<K>(fn: (value: T, index: number) => K): GroupByAccessor<K, Pipeline<T, 'sync'>>
     tee<D extends number = 2>(n?: D): TeePipe<Pipeline<T, 'sync'>, D>
-    leak(predicate?: (value: T, index: number) => boolean | undefined | null): Pipeline<T, 'sync'>
+    leak(predicate?: (value: T, index: number) => unknown): Pipeline<T, 'sync'>
     sink(): IterableIterator<T>
 }
 
 interface AsyncPipeline<T> extends AsyncIterable<T> {
-    combine<S extends Tuple<any>, U>(combineFn: (value: T, ...values: S) => U, ...others: AsyncIterable<S[keyof S]>[]): Pipeline<U, 'async'>
+    combine<S>(...others: AsyncIterable<S[keyof S]>[]): Pipeline<(T | S | undefined)[], 'async'>
     join<S>(...others: AsyncIterable<S>[]): Pipeline<T | S, 'async'>
     forEach(callbackfn: (value: T, index: number) => void): Promise<void>
     reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentKey: number) => U, initialValue: U): Promise<U>
-    every(predicate: (value: T, index: number) => boolean | undefined | null): Promise<boolean>
-    find<S extends T>(predicate: (value: T, index: number) => boolean | undefined | null): Promise<S | undefined>
-    some(predicate: (value: T, index: number) => boolean | undefined | null): Promise<boolean>
+    every(predicate: (value: T, index: number) => unknown): Promise<boolean>
+    find<S extends T>(predicate: (value: T, index: number) => unknown): Promise<S | undefined>
+    some(predicate: (value: T, index: number) => unknown): Promise<boolean>
     collect<C>(collector: (iterable: AsyncIterable<T>) => Promise<C>): Promise<C>
     count(): Promise<number>
     min(compareFn?: (a: T, b: T) => number): Promise<T | undefined>
     max(compareFn?: (a: T, b: T) => number): Promise<T | undefined>
     groupby<K>(fn: (value: T, index: number) => K): Promise<GroupByAccessor<K, Pipeline<T, 'async'>>>
     tee<D extends number = 2>(n?: D): TeePipe<Pipeline<T, 'async'>, D>
-    leak(predicate?: (value: T, index: number) => boolean | undefined | null): Pipeline<T, 'async'>
+    leak(predicate?: (value: T, index: number) => unknown): Pipeline<T, 'async'>
     sink(): AsyncIterableIterator<T>
 }
 
@@ -231,21 +229,27 @@ export class SyncPipelineConstructor<T> implements Pipeline<T, 'sync'> {
         return this.#locked;
     }
 
-    public combine<S extends Tuple<any>, U>(combineFn: (value: T, ...values: S) => U, ...others: Iterable<S[keyof S]>[]): Pipeline<U, 'sync'> {
+    public combine<S>(...others: Iterable<S>[]): Pipeline<(T | S | undefined)[], 'sync'> {
         this.#lock();
-        const iterable = Iterables.combine<Tuple<[T, ...S]>>(this.#source as any, ...others as any);
+        const iterators = others.map(val => val[Symbol.iterator]()) as Iterator<S | T>[];
+        iterators.unshift(this.#source[Symbol.iterator]());
 
         return new SyncPipelineConstructor(
             (function* () {
-                for (const values of iterable)
-                    yield combineFn(...values);
+                do {
+                    var res = iterators.map(val => val.next());
+                    yield res.map(val => !val.done ? val.value : undefined);
+                } while (res.every(val => val.done));
             })()
         );
     }
 
     public join<S>(...others: Iterable<S>[]): Pipeline<T | S, 'sync'> {
-        this.#lock();
-        return new SyncPipelineConstructor(Iterables.join<T | S>(this.#source, ...others));
+        return new SyncPipelineConstructor((function* (self: Iterable<T>) {
+            yield* self;
+            for (const iterable of others)
+                yield* iterable;
+        })(this.#lock()));
     }
 
     public take(count: number, offset: number = 0): Pipeline<T, 'sync'> {
@@ -304,16 +308,14 @@ export class SyncPipelineConstructor<T> implements Pipeline<T, 'sync'> {
         );
     }
 
-    public filter<S extends T>(predicate: (value: T, index: number) => boolean | undefined | null): Pipeline<S, 'sync'>;
-    public filter(predicate: (value: T, index: number) => boolean | undefined | null): Pipeline<T, 'sync'>;
-    public filter(predicate: (value: any, index: number) => boolean | undefined | null): SyncPipelineConstructor<any> {
+    public filter<S extends T>(predicate: (value: T, index: number) => unknown): Pipeline<S, 'sync'> {
         const source = this.#lock();
         return new SyncPipelineConstructor(
             (function* () {
                 let i = 0;
                 for (const value of source) {
                     if (predicate(value, i++)) {
-                        yield value;
+                        yield value as S;
                     }
                 }
             })()
@@ -405,7 +407,7 @@ export class SyncPipelineConstructor<T> implements Pipeline<T, 'sync'> {
         return accumulator;
     }
 
-    public every(predicate: (value: T, index: number) => boolean | undefined | null): boolean {
+    public every(predicate: (value: T, index: number) => unknown): boolean {
         this.#lock();
         let i = 0;
         for (const value of this.#source) {
@@ -416,7 +418,7 @@ export class SyncPipelineConstructor<T> implements Pipeline<T, 'sync'> {
         return true;
     }
 
-    public find<S extends T>(predicate: (value: T, index: number) => boolean | undefined | null): S | undefined {
+    public find<S extends T>(predicate: (value: T, index: number) => unknown): S | undefined {
         this.#lock();
         let i = 0;
         for (const value of this.#source) {
@@ -427,7 +429,7 @@ export class SyncPipelineConstructor<T> implements Pipeline<T, 'sync'> {
         return undefined;
     }
 
-    public some(predicate: (value: T, index: number) => boolean | undefined | null): boolean {
+    public some(predicate: (value: T, index: number) => unknown): boolean {
         this.#lock();
         let i = 0;
         for (const value of this.#source) {
@@ -552,7 +554,7 @@ export class SyncPipelineConstructor<T> implements Pipeline<T, 'sync'> {
         };
     }
 
-    public leak(predicate?: (value: T, index: number) => boolean | undefined | null): Pipeline<T, 'sync'> {
+    public leak(predicate?: (value: T, index: number) => unknown): Pipeline<T, 'sync'> {
         const [source, leak] = Array.from({ length: 2 }, () => new LinkedList<T>()).map(this.#createBranch());
         this.#source = source;
         const pipe = new SyncPipelineConstructor(leak);
@@ -620,22 +622,27 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
         return this.#locked;
     }
 
-    public combine<S extends Tuple<any>, U>(combineFn: (value: T, ...values: S) => U, ...others: AsyncIterable<S[keyof S]>[]): Pipeline<U, 'async'> {
+    public combine<S>(...others: AsyncIterable<S[keyof S]>[]): Pipeline<(T | S | undefined)[], 'async'> {
         this.#lock();
+        const iterators = others.map(val => val[Symbol.asyncIterator]()) as AsyncIterator<S | T>[];
+        iterators.unshift(this.#source[Symbol.asyncIterator]());
 
-        const iterable = AsyncIterables.combine<Tuple<[T, ...S]>>(this.#source as any, ...others as any);
-
-        return new AsyncPipelineConstructor<U>(
+        return new AsyncPipelineConstructor(
             (async function* () {
-                for await (const values of iterable)
-                    yield combineFn(...values);
+                do {
+                    var res = await Promise.all(iterators.map(val => val.next()));
+                    yield res.map(val => !val.done ? val.value : undefined);
+                } while (res.every(val => val.done));
             })()
         );
     }
 
     public join<S>(...others: AsyncIterable<S>[]): Pipeline<T | S, 'async'> {
-        this.#lock();
-        return new AsyncPipelineConstructor(AsyncIterables.join<T | S>(this.#source as AsyncIterable<T>, ...others));
+        return new AsyncPipelineConstructor<T | S>((async function* (self: AsyncIterable<T>) {
+            yield* self;
+            for await (const iterable of others)
+                yield* iterable;
+        })(this.#lock()));
     }
 
     public take(count: number, offset: number = 0): Pipeline<T, 'async'> {
@@ -655,7 +662,6 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
 
     public offset(offset: number): Pipeline<T, 'async'> {
         const source = this.#lock();
-
         return new AsyncPipelineConstructor<T>(
             (async function* () {
                 let i = 0;
@@ -697,17 +703,15 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
         );
     }
 
-    public filter<S extends T>(predicate: (value: T, index: number) => boolean | undefined | null): Pipeline<S, 'async'>;
-    public filter(predicate: (value: T, index: number) => boolean | undefined | null): Pipeline<T, 'async'>;
-    public filter(predicate: (value: any, index: number) => boolean | undefined | null): AsyncPipelineConstructor<any> {
+    public filter<S extends T>(predicate: (value: T, index: number) => unknown): Pipeline<S, 'async'> {
         const source = this.#lock();
 
-        return new AsyncPipelineConstructor(
+        return new AsyncPipelineConstructor<S>(
             (async function* () {
                 let i = 0;
                 for await (const value of source) {
                     if (predicate(value, i++)) {
-                        yield value;
+                        yield value as S;
                     }
                 }
             })()
@@ -806,7 +810,7 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
         return accumulator
     }
 
-    public async every(predicate: (value: T, index: number) => boolean | undefined | null): Promise<boolean> {
+    public async every(predicate: (value: T, index: number) => unknown): Promise<boolean> {
         this.#lock();
         let i = 0;
 
@@ -819,7 +823,7 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
         return true;
     }
 
-    public async find<S extends T>(predicate: (value: T, index: number) => boolean | undefined | null): Promise<S | undefined> {
+    public async find<S extends T>(predicate: (value: T, index: number) => unknown): Promise<S | undefined> {
         this.#lock();
         let i = 0;
 
@@ -832,7 +836,7 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
         return undefined;
     }
 
-    public async some(predicate: (value: T, index: number) => boolean | undefined | null): Promise<boolean> {
+    public async some(predicate: (value: T, index: number) => unknown): Promise<boolean> {
         this.#lock();
         let i = 0;
 
@@ -1005,7 +1009,7 @@ export class AsyncPipelineConstructor<T> implements Pipeline<T, 'async'> {
         }
     }
 
-    public leak(predicate?: (value: T, index: number) => boolean | undefined | null): Pipeline<T, 'async'> {
+    public leak(predicate?: (value: T, index: number) => unknown): Pipeline<T, 'async'> {
         const state = { mutex: new AsyncMutex(), isDone: false };
         const [source, leak] = Array.from({ length: 2 }, () => new LinkedList<T>()).map(this.#createBranch(state));
         this.#source = source;

@@ -438,7 +438,7 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
      * Returns the value of the first element in the queue where predicate is true, and undefined otherwise.
      * @param predicate A function to test each element.
      */
-    public find<S extends T>(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => boolean | undefined | null): S | undefined {
+    public find<S extends T>(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => unknown): S | undefined {
         for (const [prio, val] of this.entries()) {
             if (predicate(val, prio, this)) return val as S;
         }
@@ -449,7 +449,7 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
      * Determines whether the specified callback function returns true for any element of the queue.
      * @param predicate A function to test each element.
      */
-    public some(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => boolean | undefined | null): boolean {
+    public some(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => unknown): boolean {
         for (const [prio, val] of this.entries()) {
             if (predicate(val, prio, this)) return true;
         }
@@ -460,7 +460,7 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
      * Determines whether all the members of the queue satisfy the specified test.
      * @param predicate A function to test each element.
      */
-    public every(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => boolean | undefined | null): boolean {
+    public every(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => unknown): boolean {
         for (const [prio, val] of this.entries()) {
             if (!predicate(val, prio, this)) return false;
         }
@@ -471,7 +471,7 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
      * Determines whether all the members of the queue satisfy the specified test.
      * @param predicate A function to test each element.
      */
-    public findLast<S extends T>(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => boolean | undefined | null): S | undefined {
+    public findLast<S extends T>(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => unknown): S | undefined {
         const items = Array.from(this.entries());
         for (let i = items.length - 1; i >= 0; i--) {
             const [prio, val] = items[i];
@@ -484,7 +484,7 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
      * Returns a new PriorityQueue containing all elements that pass the test implemented by the provided function.
      * @param predicate A function to test each element.
      */
-    public filter<S extends T>(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => boolean | undefined | null): PriorityQueue<S> {
+    public filter<S extends T>(predicate: (value: T, priority: number, obj: PriorityQueue<T>) => unknown): PriorityQueue<S> {
         const newQueue = new PriorityQueue<S>();
         for (const [prio, val] of this.entries()) {
             if (predicate(val, prio, this)) newQueue.push(val as S, prio);

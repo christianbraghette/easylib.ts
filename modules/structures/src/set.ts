@@ -116,7 +116,7 @@ export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns True if every element passes the predicate, false otherwise.
      */
-    public every(predicate: (value: T, key: T, obj: HashSet<T>) => boolean | undefined | null): boolean {
+    public every(predicate: (value: T, key: T, obj: HashSet<T>) => unknown): boolean {
         for (const value of this.#set) {
             if (!predicate(value, value, this)) {
                 return false;
@@ -130,7 +130,7 @@ export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns True if at least one element passes the predicate, false otherwise.
      */
-    public some(predicate: (value: T, key: T, obj: HashSet<T>) => boolean | undefined | null): boolean {
+    public some(predicate: (value: T, key: T, obj: HashSet<T>) => unknown): boolean {
         for (const value of this.#set) {
             if (predicate(value, value, this)) {
                 return true;
@@ -144,7 +144,7 @@ export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns A new HashSet with the elements that passed the test.
      */
-    public filter<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => boolean | undefined | null): HashSet<S> {
+    public filter<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => unknown): HashSet<S> {
         const result = new HashSet<S>();
         for (const value of this.#set) {
             if (predicate(value, value, this)) {
@@ -159,7 +159,7 @@ export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to execute on each value.
      * @returns The first element that matches the predicate, or undefined if none match.
      */
-    public find<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => boolean | undefined | null): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: T, obj: HashSet<T>) => unknown): S | undefined {
         for (const value of this.#set) {
             if (predicate(value, value, this)) {
                 return value as S;
@@ -603,7 +603,7 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns True if every element passes the predicate.
      */
-    public every(predicate: (value: T, key: T, obj: this) => boolean | undefined | null): boolean {
+    public every(predicate: (value: T, key: T, obj: this) => unknown): boolean {
         for (const value of this.values()) {
             if (!predicate(value, value, this)) return false;
         }
@@ -615,7 +615,7 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns True if any element passes the predicate.
      */
-    public some(predicate: (value: T, key: T, obj: this) => boolean | undefined | null): boolean {
+    public some(predicate: (value: T, key: T, obj: this) => unknown): boolean {
         for (const value of this.values()) {
             if (predicate(value, value, this)) return true;
         }
@@ -627,7 +627,7 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to test each element.
      * @returns A new TreeSet with filtered elements.
      */
-    public filter<S extends T>(predicate: (value: T, key: T, obj: this) => boolean | undefined | null): TreeSet<S> {
+    public filter<S extends T>(predicate: (value: T, key: T, obj: this) => unknown): TreeSet<S> {
         const result = new TreeSet<S>(this.compareFn as any);
         for (const value of this.values()) {
             if (predicate(value, value, this)) result.add(value as S);
@@ -641,7 +641,7 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param predicate Function to execute on each value.
      * @returns The first element that matches the predicate, or undefined.
      */
-    public find<S extends T>(predicate: (value: T, key: T, obj: this) => boolean | undefined | null): S | undefined {
+    public find<S extends T>(predicate: (value: T, key: T, obj: this) => unknown): S | undefined {
         for (const value of this.values()) {
             if (predicate(value, value, this)) return value as S;
         }
@@ -660,7 +660,7 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
     /**
      * Combines the current set with another iterable to create a new sorted set.
      */
-    public union(other: Iterable<T>): TreeSet<T> {
+    public union(other: SetInterface<T>): TreeSet<T> {
         const result = new TreeSet<T>(this.compareFn, this.values());
         for (const item of other) result.add(item);
         return result;

@@ -18,7 +18,6 @@
 
 import { Tuple } from "./index";
 import { Collection } from "./collections";
-import { Iterables } from "./iterables";
 import { ArrayList } from "./list";
 import { HashMap, TreeMap } from "./map";
 import { Pipeline, SyncPipelineConstructor } from "./pipeline";
@@ -123,15 +122,12 @@ export class Series<V> extends Collection<Key, V> {
     }
 
     public mask<S extends V>(iterable: Iterable<boolean | null>): Series<S> {
-        const combined = Iterables.combine<[boolean | null, [Key, V]]>(iterable, this.entries());
-
-        function* iterator(): IterableIterator<[Key, S]> {
-            for (const [mask, entry] of combined)
-                if (mask === true)
-                    yield entry as [Key, S];
-        }
-
-        return new Series(iterator())
+        return new Series(
+            Pipeline.from(iterable)
+                .combine(this.entries())
+                .filter<[boolean, [Key, V]]>(entry => entry !== null && entry[0])
+                .map(([_, val]) => val as [Key, S])
+        );
     }
 
     public sort_values(ascending: boolean = false) {
@@ -296,34 +292,32 @@ export class Series<V> extends Collection<Key, V> {
         return initialValue;
     }
 
-    public every(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => boolean | undefined | null): boolean {
+    public every(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => unknown): boolean {
         for (let i = 0; i < this.#map.size; i++)
             if (!predicate(this.#values[i], this.#keys[i], i, this))
                 return false;
         return true;
     }
 
-    public some(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => boolean | undefined | null): boolean {
+    public some(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => unknown): boolean {
         for (let i = 0; i < this.#map.size; i++)
             if (predicate(this.#values[i], this.#keys[i], i, this))
                 return true;
         return false;
     }
 
-    public filter<S extends V>(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => boolean | undefined | null): Collection<Key, S>;
-    public filter(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => boolean | undefined | null): Collection<Key, V>;
-    public filter<S extends V>(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => boolean | undefined | null): Collection<Key, V> | Collection<Key, S> {
+    public filter<S extends V>(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => unknown): Series<S> {
         const self = this;
         return new Series(
             (function* () {
                 for (let i = 0; i < self.#map.size; i++)
                     if (predicate(self.#values[i], self.#keys[i], i, self))
-                        yield [self.#keys[i], self.#values[i]];
+                        yield [self.#keys[i], self.#values[i] as S];
             })()
         );
     }
 
-    public find<S extends V>(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => boolean | undefined | null): S | undefined {
+    public find<S extends V>(predicate: (value: V, key: Key, index: number, obj: Collection<Key, V>) => unknown): S | undefined {
         for (let i = 0; i < this.#map.size; i++)
             if (predicate(this.#values[i], this.#keys[i], i, this))
                 return this.#values[i] as S;
