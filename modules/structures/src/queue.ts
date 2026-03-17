@@ -22,6 +22,10 @@ import { LinkedList } from "./list";
 import { FlattenStep } from ".";
 import { Pipeline, SyncPipelineConstructor } from "./pipeline";
 
+export function isQueue(obj: Object): boolean {
+    return obj instanceof LinkedQueue || obj instanceof PriorityQueue || obj instanceof LinkedList;
+}
+
 class QueueNode {
     constructor(public next?: QueueNode, public prev?: QueueNode) { }
 }

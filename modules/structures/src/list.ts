@@ -24,6 +24,10 @@ class DoublyLinkedNode {
     constructor(public next?: DoublyLinkedNode, public prev?: DoublyLinkedNode) { }
 }
 
+export function isList(obj: Object): boolean {
+    return obj instanceof ArrayList || obj instanceof LinkedList;
+}
+
 export class ArrayList<T> extends Collection<number, T> implements List<T> {
     [key: number]: T;
     #items: T[];
