@@ -20,7 +20,7 @@ import { Tuple } from "./index";
 import { Collection } from "./collections";
 import { ArrayList } from "./list";
 import { HashMap, TreeMap } from "./map";
-import { Pipeline, SyncPipelineConstructor } from "./pipeline";
+import { Pipe } from "./pipeline";
 
 interface LocAccessor<T> extends Iterable<T> {
     [key: Key]: T;
@@ -72,22 +72,22 @@ export class Series<V> extends Collection<Key, V> {
     }
 
     public combine<S, U>(combineFn: (...values: (V | S)[]) => U, ...others: Series<S>[]): Series<U> {
-        const activeIterators = Pipeline.from<Series<S | V>>([this, ...others as any])
+        const activeIterators = Pipe.from<Series<S | V>>([this, ...others as any])
             .map(it => {
                 const iterator = it[Symbol.iterator]();
                 return { iterator, current: iterator.next() };
             })
             .filter(res => !res.current.done)
-            .collect(ArrayList.from);
+            .collect(ArrayList.from).valueOf();
 
         return new Series((function* () {
             while (activeIterators.length > 0) {
-                let [pipe, pipe1] = activeIterators.pipe().tee();
+                let [pipe, pipe1] = activeIterators.pipe().tee().valueOf();
 
-                const minKey = pipe1.map<Key>(node => node.current.value[0]).min();
+                const minKey = pipe1.map<Key>(node => node.current.value[0]).min().valueOf();
 
                 let pipe2
-                [pipe, pipe2] = pipe.filter(node => node.current.value[0] === minKey).tee();
+                [pipe, pipe2] = pipe.filter(node => node.current.value[0] === minKey).tee().valueOf();
 
                 yield [minKey!, combineFn(...pipe2.map(node => node.current.value[1]))];
 
@@ -123,8 +123,8 @@ export class Series<V> extends Collection<Key, V> {
 
     public mask<S extends V>(iterable: Iterable<boolean | null>): Series<S> {
         return new Series(
-            Pipeline.from(iterable)
-                .combine(this.entries())
+            Pipe.from(iterable)
+                .zip(this.entries())
                 .filter<[boolean, [Key, V]]>(entry => entry !== null && entry[0])
                 .map(([_, val]) => val as [Key, S])
         );
@@ -329,13 +329,13 @@ export class Series<V> extends Collection<Key, V> {
         this.#map.clear();
     }
 
-    public pipe(): Pipeline<[Key, V], 'sync'>
-    public pipe<U>(transformer: (source: Pipeline<[Key, V], 'sync'>) => Pipeline<[Key, U], 'sync'>): HashMap<Key, U>
-    public pipe<U>(transformer?: (source: Pipeline<[Key, V], 'sync'>) => Pipeline<[Key, U], 'sync'>): HashMap<Key, U> | Pipeline<[Key, V], 'sync'> {
-        const pipeline = new SyncPipelineConstructor(this.entries())
+    public pipe(): Pipe<[Key, V]>
+    public pipe<U>(transformer: (source: Pipe<[Key, V]>) => Iterable<[Key, U]>): HashMap<Key, U>
+    public pipe<U>(transformer?: (source: Pipe<[Key, V]>) => Iterable<[Key, U]>): HashMap<Key, U> | Pipe<[Key, V]> {
+        const pipeline = new Pipe(this.entries())
         if (!transformer)
             return pipeline;
-        return new HashMap(transformer(pipeline).sink());
+        return new HashMap(transformer(pipeline));
     }
 
     public keys(): IterableIterator<Key> {
@@ -440,7 +440,7 @@ export class Series<V> extends Collection<Key, V> {
 
 export class DataFrame<DataMap extends Record<string, any>> extends Series<Tuple<DataMap[keyof DataMap][]>> {
     constructor(iterable: Iterable<Tuple<(DataMap[keyof DataMap])[]>>, columns: Tuple<(keyof DataMap & string)[]>, key?: keyof DataMap & string) {
-        super(Pipeline.from(iterable).map((value, index) => {
+        super(Pipe.from(iterable).map((value, index) => {
             if (!!key) {
                 const pos = columns.indexOf(key);
                 if (typeof value[pos] !== 'string' && typeof value[pos] !== 'number')

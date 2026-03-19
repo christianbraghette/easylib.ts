@@ -18,9 +18,9 @@
 
 import { Collection, type Stack } from "./collections"
 import { LinkedList } from "./list";
-import { Pipeline, SyncPipelineConstructor } from "./pipeline";
+import { Pipe } from "./pipeline";
 
-export function isStack(obj: Object): boolean {
+export function isStack(obj: any): boolean {
     return obj instanceof LinkedStack || obj instanceof LinkedList;
 }
 
@@ -202,13 +202,13 @@ export class LinkedStack<T> extends Collection<number, T> implements Stack<T> {
         this.#length = 0;
     }
 
-    public pipe(): Pipeline<T, 'sync'>
-    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedStack<U>
-    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedStack<U> | Pipeline<T, 'sync'> {
-        const pipeline = new SyncPipelineConstructor(this.values())
+    public pipe(): Pipe<T>
+    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>): LinkedStack<U>
+    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>): LinkedStack<U> | Pipe<T> {
+        const pipeline = new Pipe(this.values())
         if (!transformer)
             return pipeline;
-        return new LinkedStack(transformer(pipeline).sink());
+        return new LinkedStack(transformer(pipeline));
     }
 
     public *keys(): IterableIterator<number> {

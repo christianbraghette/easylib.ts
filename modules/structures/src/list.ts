@@ -18,13 +18,13 @@
 
 import { FlattenStep } from ".";
 import { Collection, ConcatIterable, Deque, List } from "./collections";
-import { Pipeline, SyncPipelineConstructor } from "./pipeline";
+import { Pipe } from "./pipeline";
 
 class DoublyLinkedNode {
     constructor(public next?: DoublyLinkedNode, public prev?: DoublyLinkedNode) { }
 }
 
-export function isList(obj: Object): boolean {
+export function isList(obj: any): boolean {
     return obj instanceof ArrayList || obj instanceof LinkedList;
 }
 
@@ -46,8 +46,12 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
 
         const proxy = new Proxy(this, {
             get: (target, prop, receiver) => {
-                if (typeof prop === 'string' && /^-?\d+$/.test(prop)) {
-                    return target.at(Number(prop));
+
+                if (typeof prop === 'string') {
+                    if (/^-?\d+$/.test(prop))
+                        return target.at(Number(prop));
+                    else if (prop === 'length')
+                        return this.#items.length
                 }
 
                 const value = Reflect.get(target, prop, receiver);
@@ -57,13 +61,18 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
                 return value;
             },
             set: (target, prop, value) => {
-                if (typeof prop === 'string' && /^-?\d+$/.test(prop)) {
-                    const index = Number(prop);
-                    let pos = index < 0 ? target.length + index : index;
+                if (typeof prop === 'string') {
+                    if (/^-?\d+$/.test(prop)) {
+                        const index = Number(prop);
+                        let pos = index < 0 ? target.length + index : index;
 
-                    if (pos < 0 || pos >= target.length) return false;
-                    target.#items[pos] = value;
-                    return true;
+                        if (pos < 0 || pos >= target.length) return false;
+                        target.#items[pos] = value;
+                        return true;
+                    } else if (prop === 'length') {
+                        this.#items.length = length;
+                        return true;
+                    }
                 }
                 return Reflect.set(target, prop, value);
             }
@@ -72,13 +81,7 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
         return proxy;
     }
 
-    public get length(): number {
-        return this.#items.length;
-    }
-
-    public set length(length: number) {
-        this.#items.length = length;
-    }
+    declare length: number;
 
     // ### BASE METHODS
 
@@ -259,13 +262,13 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
         return new ArrayList<U>(result);
     }
 
-    public pipe(): Pipeline<T, 'sync'>
-    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): ArrayList<U>
-    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): ArrayList<U> | Pipeline<T, 'sync'> {
-        const pipeline = new SyncPipelineConstructor(this.values())
+    public pipe(): Pipe<T>
+    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>): ArrayList<U>
+    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>): ArrayList<U> | Pipe<T> {
+        const pipeline = new Pipe(this.values())
         if (!transformer)
             return pipeline;
-        return new ArrayList(transformer(pipeline).sink());
+        return new ArrayList(transformer(pipeline));
     }
 
     public sort(compareFn?: (a: T, b: T) => number): this {
@@ -921,13 +924,13 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         return new LinkedList<U>(flatMappedGenerator());
     }
 
-    public pipe(): Pipeline<T, 'sync'>
-    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedList<U>
-    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): LinkedList<U> | Pipeline<T, 'sync'> {
-        const pipeline = new SyncPipelineConstructor(this.values())
+    public pipe(): Pipe<T>
+    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>): LinkedList<U>
+    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>): LinkedList<U> | Pipe<T> {
+        const pipeline = new Pipe(this.values())
         if (!transformer)
             return pipeline;
-        return new LinkedList(transformer(pipeline).sink());
+        return new LinkedList(transformer(pipeline));
     }
 
     /**

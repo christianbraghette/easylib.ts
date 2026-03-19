@@ -17,7 +17,7 @@
  */
 
 import { FlattenStep } from ".";
-import type { Pipeline } from "./pipeline";
+import type { Pipe } from "./pipeline";
 
 export interface ConcatIterable<T> extends Iterable<T> {
     [Symbol.isConcatSpreadable]: boolean;
@@ -31,8 +31,8 @@ export abstract class Collection<K, V> {
     abstract values(): IterableIterator<V>;
     abstract entries(): IterableIterator<[K, V]>;
 
-    abstract pipe(): Pipeline<V, 'sync'> | Pipeline<[K, V], 'sync'>;
-    abstract pipe<U>(transformer: ((source: Pipeline<V, 'sync'>) => Pipeline<U, 'sync'>) | ((source: Pipeline<[K, V], 'sync'>) => Pipeline<[K, U], 'sync'>)): Collection<K, U>;
+    abstract pipe(): Pipe<V> | Pipe<[K, V]>;
+    abstract pipe<U>(transformer: ((source: Pipe<V>) => Iterable<U>) | ((source: Pipe<[K, V]>) => Iterable<[K, U]>)): Collection<K, U>;
 
     abstract [Symbol.iterator](): IterableIterator<V> | IterableIterator<[K, V]>;
     abstract [Symbol.toStringTag]: string;
@@ -46,7 +46,7 @@ export abstract class Collection<K, V> {
     }
 }
 
-export function isCollection(obj: Object): boolean {
+export function isCollection(obj: any): boolean {
     return obj instanceof Collection;
 }
 

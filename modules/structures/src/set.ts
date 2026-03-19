@@ -18,9 +18,9 @@
 
 import { Collection, type Set as SetInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
-import { Pipeline, SyncPipelineConstructor } from "./pipeline";
+import { Pipe } from "./pipeline";
 
-export function isSet(obj: Object): boolean {
+export function isSet(obj: any): boolean {
     return obj instanceof HashSet || obj instanceof TreeSet;
 }
 
@@ -172,13 +172,13 @@ export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
         return undefined;
     }
 
-    public pipe(): Pipeline<T, 'sync'>
-    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): HashSet<U>
-    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>): HashSet<U> | Pipeline<T, 'sync'> {
-        const pipeline = new SyncPipelineConstructor(this.values())
+    public pipe(): Pipe<T>
+    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>): HashSet<U>
+    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>): HashSet<U> | Pipe<T> {
+        const pipeline = new Pipe(this.values())
         if (!transformer)
             return pipeline;
-        return new HashSet(transformer(pipeline).sink());
+        return new HashSet(transformer(pipeline));
     }
 
     public sort(compareFn: (a: T, b: T) => number): this {
@@ -652,13 +652,13 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
         return undefined;
     }
 
-    public pipe(): Pipeline<T, 'sync'>
-    public pipe<U>(transformer: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>, compareFn?: (a: U, b: U) => number): TreeSet<U>
-    public pipe<U>(transformer?: (source: Pipeline<T, 'sync'>) => Pipeline<U, 'sync'>, compareFn?: (a: U, b: U) => number): TreeSet<U> | Pipeline<T, 'sync'> {
-        const pipeline = new SyncPipelineConstructor(this.values())
+    public pipe(): Pipe<T>
+    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>, compareFn?: (a: U, b: U) => number): TreeSet<U>
+    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>, compareFn?: (a: U, b: U) => number): TreeSet<U> | Pipe<T> {
+        const pipeline = new Pipe(this.values())
         if (!transformer)
             return pipeline;
-        return new TreeSet(compareFn ?? ((a, b) => a == b ? 0 : a < b ? -1 : 1), transformer(pipeline).sink());
+        return new TreeSet(compareFn ?? ((a, b) => a == b ? 0 : a < b ? -1 : 1), transformer(pipeline));
     }
 
     /**
