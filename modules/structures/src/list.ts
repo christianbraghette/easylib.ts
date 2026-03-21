@@ -17,114 +17,79 @@
  */
 
 import { FlattenStep } from ".";
-import { Collection, ConcatIterable, Deque, List } from "./collections";
+import { ConcatIterable, Deque, List } from "./collections";
 import { Pipe } from "./pipeline";
-
-class DoublyLinkedNode {
-    constructor(public next?: DoublyLinkedNode, public prev?: DoublyLinkedNode) { }
-}
 
 export function isList(obj: any): boolean {
     return obj instanceof ArrayList || obj instanceof LinkedList;
 }
 
-export class ArrayList<T> extends Collection<number, T> implements List<T> {
+export class ArrayList<T> extends (Array as any) implements List<T> {
     [key: number]: T;
-    #items: T[];
 
     constructor(iterable?: Iterable<T>);
     constructor(length?: number);
     constructor(args?: Iterable<T> | number) {
-        super();
         if (typeof args === 'number') {
-            this.#items = new Array(args);
-        } else if (args !== undefined) {
-            this.#items = Array.from(args);
+            super(args);
         } else {
-            this.#items = [];
+            super();
+            if (args)
+                for (const value of args)
+                    this.push(value);
         }
-
-        const proxy = new Proxy(this, {
-            get: (target, prop, receiver) => {
-
-                if (typeof prop === 'string') {
-                    if (/^-?\d+$/.test(prop))
-                        return target.at(Number(prop));
-                    else if (prop === 'length')
-                        return this.#items.length
-                }
-
-                const value = Reflect.get(target, prop, receiver);
-                if (typeof value === 'function') {
-                    return value.bind(target);
-                }
-                return value;
-            },
-            set: (target, prop, value) => {
-                if (typeof prop === 'string') {
-                    if (/^-?\d+$/.test(prop)) {
-                        const index = Number(prop);
-                        let pos = index < 0 ? target.length + index : index;
-
-                        if (pos < 0 || pos >= target.length) return false;
-                        target.#items[pos] = value;
-                        return true;
-                    } else if (prop === 'length') {
-                        this.#items.length = length;
-                        return true;
-                    }
-                }
-                return Reflect.set(target, prop, value);
-            }
-        });
-
-        return proxy;
     }
 
-    declare length: number;
+    get length(): number {
+        return super.length;
+    }
+
+    set length(length: number) {
+        super.length = length;
+    }
 
     // ### BASE METHODS
 
     public push(...items: T[]): number {
-        return this.#items.push(...items);
+        return super.push(...items);
     }
 
     public pop(): T | undefined {
-        return this.#items.pop();
+        return super.pop();
     }
 
     public shift(): T | undefined {
-        return this.#items.shift();
+        return super.shift();
     }
 
     public unshift(...items: T[]): number {
-        return this.#items.unshift(...items);
+        return super.unshift(...items);
     }
 
     public clear(): void {
-        this.#items = [];
+        super.length = 0;
     }
 
     // ### LINEAR METHODS
 
     public reverse(): this {
-        this.#items.reverse();
+        super.reverse();
         return this;
     }
 
     public fill(value: T, start?: number, end?: number): this {
-        this.#items.fill(value, start, end);
+        super.fill(value, start, end);
         return this;
     }
 
     public includes(searchElement: T, fromIndex?: number): boolean {
-        return this.#items.includes(searchElement, fromIndex);
+        return super.includes(searchElement, fromIndex);
     }
 
     public remove(value: T): boolean {
-        const index = this.#items.indexOf(value);
+        const index = super.indexOf(value);
         if (index !== -1) {
-            this.#items.splice(index, 1);
+            super.splice(index, 1);
             return true;
         }
         return false;
@@ -133,8 +98,8 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
     public concat(...items: (T | ConcatIterable<T>)[]): ArrayList<T> {
         const result: T[] = [];
 
-        for (let i = 0; i < this.#items.length; i++) {
-            result.push(this.#items[i]);
+        for (let i = 0; i < super.length; i++) {
+            result.push(super[i]);
         }
 
         for (let i = 0; i < items.length; i++) {
@@ -153,69 +118,69 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
     }
 
     public join(separator: string = ","): string {
-        return this.#items.join(separator);
+        return super.join(separator);
     }
 
     // ### INDEXABLE METHODS
 
     public at(index: number): T | undefined {
-        return this.#items.at(index);
+        return super.at(index);
     }
 
     public indexOf(searchElement: T, fromIndex?: number): number {
-        return this.#items.indexOf(searchElement, fromIndex);
+        return super.indexOf(searchElement, fromIndex);
     }
 
     public lastIndexOf(searchElement: T, fromIndex?: number): number {
-        return this.#items.lastIndexOf(searchElement, fromIndex);
+        return super.lastIndexOf(searchElement, fromIndex);
     }
 
     public slice(start?: number, end?: number): ArrayList<T> {
-        return new ArrayList<T>(this.#items.slice(start, end));
+        return new ArrayList<T>(super.slice(start, end));
     }
 
     public splice(start: number, deleteCount?: number, ...items: T[]): ArrayList<T> {
-        return new ArrayList<T>(this.#items.splice(start, deleteCount ?? (this.#items.length - start), ...items));
+        return new ArrayList<T>(super.splice(start, deleteCount ?? (super.length - start), ...items));
     }
 
     public copyWithin(target: number, start: number, end?: number): this {
-        this.#items.copyWithin(target, start, end);
+        super.copyWithin(target, start, end);
         return this;
     }
 
     // ### FUNCTIONALS
 
     public forEach(callbackfn: (value: T, key: number, obj: ArrayList<T>) => void): void {
-        this.#items.forEach((v, i) => callbackfn(v, i, this));
+        super.forEach((v: T, i: number) => callbackfn(v, i, this));
     }
 
     public map<U>(callbackfn: (value: T, key: number, obj: ArrayList<T>) => U): ArrayList<U> {
-        return new ArrayList<U>(this.#items.map((v, i) => callbackfn(v, i, this)));
+        return new ArrayList<U>(super.map((v: T, i: number) => callbackfn(v, i, this)));
     }
 
     public filter<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): ArrayList<S> {
-        return new ArrayList<S>(this.#items.filter((v, i) => predicate(v, i, this)) as S[]);
+        return new ArrayList<S>(super.filter((v: T, i: number) => predicate(v, i, this)) as S[]);
     }
 
     public reduce<U>(callbackfn: (acc: U, curr: T, key: number, obj: ArrayList<T>) => U, initialValue: U): U {
-        return this.#items.reduce((acc, curr, i) => callbackfn(acc, curr, i, this), initialValue);
+        return super.reduce((acc: U, curr: T, i: number) => callbackfn(acc, curr, i, this), initialValue);
     }
 
     public every(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): boolean {
-        return this.#items.every((v, i) => !!predicate(v, i, this));
+        return super.every((v: T, i: number) => !!predicate(v, i, this));
     }
 
     public some(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): boolean {
-        return this.#items.some((v, i) => !!predicate(v, i, this));
+        return super.some((v: T, i: number) => !!predicate(v, i, this));
     }
 
     public find<S extends T>(predicate: (value: T, key: number, obj: ArrayList<T>) => unknown): S | undefined {
-        return this.#items.find((v, i) => predicate(v, i, this)) as S | undefined;
+        return super.find((v: T, i: number) => predicate(v, i, this)) as S | undefined;
     }
 
     public findLast<S extends T>(predicate: (value: T, index: number, obj: ArrayList<T>) => unknown): S | undefined {
         for (let i = this.length - 1; i >= 0; i--) {
-            const value = this.#items[i];
+            const value = super[i];
             if (predicate(value as T, i, this)) {
                 return value as S;
             }
@@ -224,12 +189,12 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
     }
 
     public findIndex(predicate: (value: T, index: number, obj: ArrayList<T>) => unknown): number {
-        return this.#items.findIndex((v, i) => predicate(v, i, this));
+        return super.findIndex((v: T, i: number) => predicate(v, i, this));
     }
 
     public findLastIndex(predicate: (value: T, index: number, obj: ArrayList<T>) => unknown): number {
         for (let i = this.length - 1; i >= 0; i--) {
-            if (predicate(this.#items[i] as T, i, this)) {
+            if (predicate(super[i] as T, i, this)) {
                 return i;
             }
         }
@@ -237,18 +202,18 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
     }
 
     public reduceRight<U>(callbackfn: (acc: U, curr: T, i: number, obj: ArrayList<T>) => U, initialValue: U): U {
-        return this.#items.reduceRight((acc, curr, i) => callbackfn(acc, curr, i, this), initialValue);
+        return super.reduceRight((acc: U, curr: T, i: number) => callbackfn(acc, curr, i, this), initialValue);
     }
 
     public flat<D extends number = 1>(depth: D = 1 as D): ArrayList<FlattenStep<T, D>> {
-        return new ArrayList<any>(this.#items.flat(depth));
+        return new ArrayList<any>(super.flat(depth));
     }
 
     public flatMap<U>(callbackfn: (value: T, index: number, obj: ArrayList<T>) => U | Iterable<U>): ArrayList<U> {
         const result: U[] = [];
 
         for (let i = 0; i < this.length; i++) {
-            const mapped = callbackfn(this.#items[i] as T, i, this);
+            const mapped = callbackfn(super[i] as T, i, this);
 
             if (typeof mapped === 'object' && mapped !== null && Symbol.iterator in mapped) {
                 for (const innerItem of mapped as Iterable<U>) {
@@ -272,22 +237,22 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
     }
 
     public sort(compareFn?: (a: T, b: T) => number): this {
-        this.#items.sort(compareFn);
+        super.sort(compareFn);
         return this;
     }
 
     // ### ITERATORS
 
     public keys(): IterableIterator<number> {
-        return this.#items.keys();
+        return super.keys();
     }
 
     public values(): IterableIterator<T> {
-        return this.#items.values();
+        return super.values();
     }
 
     public entries(): IterableIterator<[number, T]> {
-        return this.#items.entries();
+        return super.entries();
     }
 
     [Symbol.iterator](): IterableIterator<T> {
@@ -299,20 +264,30 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
     }
 
     toJSON(): T[] {
-        return this.#items.slice();
+        return super.slice();
     }
 
     get [Symbol.toStringTag](): string { return "ArrayList" };
 
+    get [Symbol.isConcatSpreadable](): true { return true; }
+
     public static from<S>(iterable: Iterable<S>): ArrayList<S> {
         return new ArrayList(iterable);
     }
+
+    public static of<S>(...items: S[]): ArrayList<S> {
+        return new ArrayList(items);
+    }
 }
 
-export class LinkedList<T> extends Collection<number, T> implements List<T>, Deque<T> {
-    #data = new WeakMap<DoublyLinkedNode, T>();
-    #next?: DoublyLinkedNode;
-    #prev?: DoublyLinkedNode;
+class LinkedListNode {
+    constructor(public next?: LinkedListNode, public prev?: LinkedListNode) { }
+}
+
+export class LinkedList<T> implements List<T>, Deque<T> {
+    #data = new WeakMap<LinkedListNode, T>();
+    #next?: LinkedListNode;
+    #prev?: LinkedListNode;
     #reversed: boolean = false;
     #length: number = 0;
 
@@ -321,53 +296,52 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * @param iterable An iterable object to initialize the list with.
      */
     constructor(iterable?: Iterable<T>) {
-        super();
         for (const item of iterable ?? [])
             this.push(item);
     }
 
-    get #head(): DoublyLinkedNode | undefined {
+    get #head(): LinkedListNode | undefined {
         return this.#reversed ? this.#prev : this.#next;
     }
 
-    set #head(node: DoublyLinkedNode | undefined) {
+    set #head(node: LinkedListNode | undefined) {
         if (this.#reversed)
             this.#prev = node;
         else
             this.#next = node;
     }
 
-    get #tail(): DoublyLinkedNode | undefined {
+    get #tail(): LinkedListNode | undefined {
         return this.#reversed ? this.#next : this.#prev;
     }
 
-    set #tail(node: DoublyLinkedNode | undefined) {
+    set #tail(node: LinkedListNode | undefined) {
         if (this.#reversed)
             this.#next = node;
         else
             this.#prev = node;
     }
 
-    #getValue(node?: DoublyLinkedNode): T | undefined {
+    #getValue(node?: LinkedListNode): T | undefined {
         return node ? this.#data.get(node) : undefined;
     }
 
-    #getNext(node?: DoublyLinkedNode): DoublyLinkedNode | undefined {
+    #getNext(node?: LinkedListNode): LinkedListNode | undefined {
         return this.#reversed ? node?.prev : node?.next;
     }
 
-    #setNext(curr: DoublyLinkedNode, next: DoublyLinkedNode | undefined): void {
+    #setNext(curr: LinkedListNode, next: LinkedListNode | undefined): void {
         if (this.#reversed)
             curr.prev = next;
         else
             curr.next = next;
     }
 
-    #getPrev(node?: DoublyLinkedNode): DoublyLinkedNode | undefined {
+    #getPrev(node?: LinkedListNode): LinkedListNode | undefined {
         return this.#reversed ? node?.next : node?.prev;
     }
 
-    #setPrev(curr: DoublyLinkedNode, prev: DoublyLinkedNode | undefined): void {
+    #setPrev(curr: LinkedListNode, prev: LinkedListNode | undefined): void {
         if (this.#reversed)
             curr.next = prev;
         else
@@ -403,7 +377,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      */
     public push(...items: T[]): number {
         for (const item of items) {
-            const newNode = new DoublyLinkedNode();
+            const newNode = new LinkedListNode();
             this.#data.set(newNode, item);
 
             if (!this.#tail) {
@@ -427,7 +401,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     public unshift(...items: T[]): number {
         for (let i = items.length - 1; i >= 0; i--) {
             const item = items[i];
-            const newNode = new DoublyLinkedNode();
+            const newNode = new LinkedListNode();
             this.#data.set(newNode, item);
 
             if (!this.#head) {
@@ -531,7 +505,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * @param value The element to remove.
      */
     public remove(value: T): boolean {
-        let nodeToRemove: DoublyLinkedNode | undefined;
+        let nodeToRemove: LinkedListNode | undefined;
 
         for (nodeToRemove = this.#head; !!nodeToRemove && this.#data.get(nodeToRemove) !== value; nodeToRemove = this.#getNext(nodeToRemove));
         if (!nodeToRemove) return false;
@@ -705,7 +679,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         }
 
         for (const item of items) {
-            const newNode = new DoublyLinkedNode();
+            const newNode = new LinkedListNode();
             this.#data.set(newNode, item);
 
             if (!cursor) {
@@ -945,9 +919,9 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
         let head = this.#head;
 
         for (let step = 1; step < this.length; step *= 2) {
-            let curr: DoublyLinkedNode | undefined = head;
-            let newHead: DoublyLinkedNode | undefined = undefined;
-            let listTail: DoublyLinkedNode | undefined = undefined;
+            let curr: LinkedListNode | undefined = head;
+            let newHead: LinkedListNode | undefined = undefined;
+            let listTail: LinkedListNode | undefined = undefined;
 
             while (curr) {
                 const left = curr;
@@ -991,7 +965,7 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
      * Splits the list after `n` nodes and returns the rest.
      * (invariato, già corretto)
      */
-    #split(node: DoublyLinkedNode | undefined, n: number): DoublyLinkedNode | undefined {
+    #split(node: LinkedListNode | undefined, n: number): LinkedListNode | undefined {
         if (!node) return undefined;
 
         for (let i = 1; i < n && this.#getNext(node); i++)
@@ -1006,12 +980,12 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
     /**
      * Merges two sorted sublists iteratively (no recursion, O(1) stack).
      */
-    #merge(left: DoublyLinkedNode | undefined, right: DoublyLinkedNode | undefined, compare: (a: T, b: T) => number): DoublyLinkedNode | undefined {
+    #merge(left: LinkedListNode | undefined, right: LinkedListNode | undefined, compare: (a: T, b: T) => number): LinkedListNode | undefined {
         if (!left) return right;
         if (!right) return left;
 
-        const dummy = new DoublyLinkedNode();
-        let curr: DoublyLinkedNode = dummy;
+        const dummy = new LinkedListNode();
+        let curr: LinkedListNode = dummy;
 
         while (left && right) {
             const leftVal = this.#data.get(left)!;
@@ -1195,7 +1169,13 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
 
     get [Symbol.toStringTag](): string { return "LinkedList" };
 
+    get [Symbol.isConcatSpreadable](): true { return true; }
+
     public static from<S>(iterable: Iterable<S>): LinkedList<S> {
         return new LinkedList(iterable);
+    }
+
+    public static of<S>(...items: S[]): LinkedList<S> {
+        return new LinkedList(items);
     }
 }

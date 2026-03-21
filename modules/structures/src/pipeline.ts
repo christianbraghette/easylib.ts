@@ -182,11 +182,62 @@ export class Pipe<T> {
             (function* () {
                 while (true) {
                     var res = iterators.map(val => val.next());
+                    if (res.some(val => val.done)) break;
+                    yield res.map(val => !val.done ? val.value : undefined);
+                };
+            })()
+        );
+    }
+
+    public zipAll<S>(...others: Iterable<S>[]): Pipe<(T | S | undefined)[]> {
+        this.#lock();
+        const iterators = others.map(val => val[Symbol.iterator]()) as Iterator<S | T>[];
+        iterators.unshift(this.#source[Symbol.iterator]());
+
+        return new Pipe(
+            (function* () {
+                while (true) {
+                    var res = iterators.map(val => val.next());
                     if (res.every(val => val.done)) break;
                     yield res.map(val => !val.done ? val.value : undefined);
                 };
             })()
         );
+    }
+
+    public unzip<N extends number>(length: N): Drain<{ [K in keyof any[]]: Pipe<any> } & { length: N }> {
+        this.#lock();
+
+        const buffers = Array.from({ length }, () => new LinkedList<any>());
+        const source = this.#source[Symbol.iterator]();
+
+        const branches = buffers.map((myBuffer, index) => {
+            return new Pipe((function* () {
+                while (true) {
+                    if (myBuffer.length > 0) {
+                        yield myBuffer.shift()!;
+                    } else {
+                        const { value, done } = source.next();
+                        if (done) break;
+
+                        if (!Array.isArray(value) && !(Symbol.iterator in Object(value))) {
+                            throw new TypeError("L'elemento della Pipe non è iterabile e non può essere decompresso (unzipped)");
+                        }
+
+                        const values = Array.from(value as Iterable<any>);
+                        for (let i = 0; i < length; i++) {
+                            if (i === index) continue;
+                            if (buffers[i]) {
+                                buffers[i].push(values[i]);
+                            }
+                        }
+                        yield values[index];
+                    }
+                }
+            })());
+        });
+
+        return new Drain(branches as any);
     }
 
     public concat<S>(...others: Iterable<S>[]): Pipe<T | S> {
@@ -210,18 +261,6 @@ export class Pipe<T> {
                 }
             })()
         );
-    }
-
-    public at(offset: number): Drain<T | undefined> {
-        let i = 0;
-        for (const val of this.#lock()) {
-            if (i > offset)
-                break;
-            if (i === offset)
-                return new Drain<T | undefined>(val);
-            i++;
-        }
-        return new Drain<T | undefined>(undefined);
     }
 
     public takeWhile(predicate: (value: T, index: number) => boolean): Pipe<T> {

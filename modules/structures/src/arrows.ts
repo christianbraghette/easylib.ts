@@ -10,8 +10,8 @@ export namespace Bool {
         return args.every(arg => !!arg);
     }
 
-    export function or(...args: any[]) {
-        return (...args2: any[]): boolean => [...args, ...args2].some(arg => !!arg);
+    export function or(...args: any[]): (...args2: any[]) => boolean {
+        return (...args2: any[]): boolean => { console.log([...args, ...args2]); return [...args, ...args2].some(arg => !!arg)};
     }
 
     export function isNa(value: any): boolean {

@@ -23,31 +23,33 @@ export interface ConcatIterable<T> extends Iterable<T> {
     [Symbol.isConcatSpreadable]: boolean;
 }
 
-export abstract class Collection<K, V> {
+export interface Collection<K, V> {
+    clear(): void;
 
-    abstract clear(): void;
+    keys(): IterableIterator<K>;
+    values(): IterableIterator<V>;
+    entries(): IterableIterator<[K, V]>;
 
-    abstract keys(): IterableIterator<K>;
-    abstract values(): IterableIterator<V>;
-    abstract entries(): IterableIterator<[K, V]>;
+    pipe(): Pipe<V> | Pipe<[K, V]>;
+    pipe<U>(transformer: ((source: Pipe<V>) => Iterable<U>) | ((source: Pipe<[K, V]>) => Iterable<[K, U]>)): Collection<K, U>;
 
-    abstract pipe(): Pipe<V> | Pipe<[K, V]>;
-    abstract pipe<U>(transformer: ((source: Pipe<V>) => Iterable<U>) | ((source: Pipe<[K, V]>) => Iterable<[K, U]>)): Collection<K, U>;
+    toJSON(): [K, V][] | V[];
 
-    abstract [Symbol.iterator](): IterableIterator<V> | IterableIterator<[K, V]>;
-    abstract [Symbol.toStringTag]: string;
-
-    toJSON(): [K, V][] | V[] {
-        return [...this] as [K, V][] | V[];
-    }
-
-    get [Symbol.isConcatSpreadable](): boolean {
-        return true;
-    }
+    [Symbol.iterator](): IterableIterator<V> | IterableIterator<[K, V]>;
+    [Symbol.toStringTag]: string;
+    [Symbol.isConcatSpreadable]: true;
 }
 
 export function isCollection(obj: any): boolean {
-    return obj instanceof Collection;
+    return obj.clear &&
+        obj.keys &&
+        obj.values &&
+        obj.entries &&
+        obj.pipe &&
+        obj.toJSON &&
+        obj[Symbol.iterator] &&
+        obj[Symbol.toStringTag] &&
+        [Symbol.isConcatSpreadable]
 }
 
 export interface NonLinear<K, V> extends Collection<K, V> {

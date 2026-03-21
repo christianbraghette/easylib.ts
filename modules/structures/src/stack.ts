@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { Collection, type Stack } from "./collections"
+import { Collection, ConcatIterable, type Stack } from "./collections"
 import { LinkedList } from "./list";
 import { Pipe } from "./pipeline";
 
@@ -28,14 +28,13 @@ class StackNode {
     constructor(public next?: StackNode, public prev?: StackNode) { }
 }
 
-export class LinkedStack<T> extends Collection<number, T> implements Stack<T> {
+export class LinkedStack<T> implements Stack<T> {
     #nodes = new WeakMap<StackNode, T>();
     #counts = new Map<T, number>();
     #head?: StackNode;
     #length = 0;
 
     constructor(iterable?: Iterable<T>) {
-        super();
         for (const item of iterable ?? [])
             this.push(item);
     }
@@ -156,21 +155,20 @@ export class LinkedStack<T> extends Collection<number, T> implements Stack<T> {
      * @param items Items or iterables to concatenate.
      * @returns A new LinkedStack instance.
      */
-    public concat(...items: (T | Iterable<T>)[]): LinkedStack<T> {
+    public concat(...items: (T | ConcatIterable<T>)[]): LinkedStack<T> {
         const self = this;
-        const combinedIterable = function* () {
+
+        return new LinkedStack<T>((function* () {
             yield* self;
 
             for (const item of items) {
-                if (typeof item === 'object' && item !== null && Symbol.iterator in item) {
-                    yield* (item as Iterable<T>);
+                if (typeof item === 'object' && item !== null && Symbol.iterator in item && item[Symbol.isConcatSpreadable] === true) {
+                    yield* item as Iterable<T>
                 } else {
                     yield item as T;
                 }
             }
-        };
-
-        return new LinkedStack<T>(combinedIterable());
+        })());
     }
 
     /**
@@ -247,4 +245,14 @@ export class LinkedStack<T> extends Collection<number, T> implements Stack<T> {
     }
 
     get [Symbol.toStringTag](): string { return "LinkedStack"; }
+
+    get [Symbol.isConcatSpreadable](): true { return true; }
+
+    public static from<S>(iterable: Iterable<S>): LinkedStack<S> {
+        return new LinkedStack(iterable);
+    }
+
+    public static of<S>(...items: S[]): LinkedStack<S> {
+        return new LinkedStack(items);
+    }
 }

@@ -17,7 +17,7 @@
  */
 
 import { BinaryHeap } from "./heap";
-import { Collection, type Queue } from "./collections";
+import { Collection, ConcatIterable, type Queue } from "./collections";
 import { LinkedList } from "./list";
 import { FlattenStep } from ".";
 import { Pipe } from "./pipeline";
@@ -30,7 +30,7 @@ class QueueNode {
     constructor(public next?: QueueNode, public prev?: QueueNode) { }
 }
 
-export class LinkedQueue<T> extends Collection<number, T> implements Queue<T> {
+export class LinkedQueue<T> implements Queue<T> {
     #nodes = new WeakMap<QueueNode, T>();
     #counts = new Map<T, number>();
     #head?: QueueNode;
@@ -38,7 +38,6 @@ export class LinkedQueue<T> extends Collection<number, T> implements Queue<T> {
     #length = 0;
 
     constructor(iterable?: Iterable<T>) {
-        super();
         for (const item of iterable ?? [])
             this.push(item);
     }
@@ -168,21 +167,20 @@ export class LinkedQueue<T> extends Collection<number, T> implements Queue<T> {
      * @param items Items or iterables to concatenate.
      * @returns A new LinkedStack instance.
      */
-    public concat(...items: (T | Iterable<T>)[]): LinkedQueue<T> {
+    public concat(...items: (T | ConcatIterable<T>)[]): LinkedQueue<T> {
         const self = this;
-        const combinedIterable = function* () {
+
+        return new LinkedQueue<T>((function* () {
             yield* self;
 
             for (const item of items) {
-                if (typeof item === 'object' && item !== null && Symbol.iterator in item) {
+                if (typeof item === 'object' && item !== null && Symbol.iterator in item && item[Symbol.isConcatSpreadable] === true) {
                     yield* (item as Iterable<T>);
                 } else {
                     yield item as T;
                 }
             }
-        };
-
-        return new LinkedQueue<T>(combinedIterable());
+        })());
     }
 
     /**
@@ -259,13 +257,23 @@ export class LinkedQueue<T> extends Collection<number, T> implements Queue<T> {
     }
 
     get [Symbol.toStringTag](): string { return "QueueStack"; }
+
+    get [Symbol.isConcatSpreadable](): true { return true; }
+
+    public static from<S>(iterable: Iterable<[number, S]>): PriorityQueue<S> {
+        return new PriorityQueue<S>(iterable);
+    }
+
+    public static of<S>(...items: [number, S][]): PriorityQueue<S> {
+        return new PriorityQueue(items);
+    }
 }
 
 class PriorityQueueNode {
     constructor(public priority: number) { }
 }
 
-export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> {
+export class PriorityQueue<T> implements Queue<T> {
     #data = new WeakMap<PriorityQueueNode, T>();
     #nodes = new Map<T, LinkedList<PriorityQueueNode>>();
     #heap = new BinaryHeap<PriorityQueueNode>((a, b) => b.priority - a.priority);
@@ -275,7 +283,6 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
      * @param iterable An optional iterable of [priority, value] pairs to initialize the queue.
      */
     constructor(iterable?: Iterable<[number, T]>) {
-        super();
         for (const [priority, value] of iterable ?? [])
             this.push(value, priority);
     }
@@ -415,19 +422,21 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
      * @param items Additional items or iterables to append.
      * @returns A new PriorityQueue instance.
      */
-    public concat(...items: (T | Iterable<T>)[]): PriorityQueue<T> {
-        const newQueue = new PriorityQueue<T>();
-        for (const [prio, val] of this.entries())
-            newQueue.push(val, prio);
+    public concat(...items: (T | ConcatIterable<T>)[]): PriorityQueue<T> {
+        const self = this;
 
-        for (const item of items) {
-            if (Symbol.iterator in (item as any)) {
-                for (const subItem of item as Iterable<T>) newQueue.push(subItem, 0);
-            } else {
-                newQueue.push(item as T, 0);
+        return new PriorityQueue<T>((function* () {
+            yield* self;
+
+            for (const item of items) {
+                if (typeof item === 'object' && item !== null && Symbol.iterator in item && item[Symbol.isConcatSpreadable] === true) {
+                    for (const value of item as Iterable<T>)
+                        yield [0, value];
+                } else {
+                    yield [0, item as T];
+                }
             }
-        }
-        return newQueue;
+        })());
     }
 
     /**
@@ -612,4 +621,14 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
     }
 
     get [Symbol.toStringTag](): string { return "PriorityQueue"; }
+
+    get [Symbol.isConcatSpreadable](): true { return true; }
+
+    public static from<S>(iterable: Iterable<[number, S]>): PriorityQueue<S> {
+        return new PriorityQueue<S>(iterable);
+    }
+
+    public static of<S>(...items: [number, S][]): PriorityQueue<S> {
+        return new PriorityQueue(items);
+    }
 }

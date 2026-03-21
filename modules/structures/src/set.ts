@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { Collection, type Set as SetInterface } from "./collections";
+import { type Set as SetInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
 import { Pipe } from "./pipeline";
 
@@ -24,7 +24,7 @@ export function isSet(obj: any): boolean {
     return obj instanceof HashSet || obj instanceof TreeSet;
 }
 
-export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
+export class HashSet<T> implements SetInterface<T> {
     #set: Set<T>;
 
     /**
@@ -32,7 +32,6 @@ export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param iterable An optional iterable of elements to initialize the set with.
      */
     constructor(iterable?: Iterable<T>) {
-        super();
         this.#set = new Set(iterable);
     }
 
@@ -278,8 +277,14 @@ export class HashSet<T> extends Collection<T, T> implements SetInterface<T> {
 
     get [Symbol.toStringTag](): string { return "HashSet"; }
 
+    get [Symbol.isConcatSpreadable](): true { return true; }
+
     public static from<S>(iterable: Iterable<S>): HashSet<S> {
         return new HashSet(iterable);
+    }
+
+    public static of<S>(...items: S[]): HashSet<S> {
+        return new HashSet(items);
     }
 }
 
@@ -295,7 +300,7 @@ class BSTNode {
     public color: Color = Color.RED;
 }
 
-export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
+export class TreeSet<T> implements SetInterface<T> {
     #size: number = 0;
     #data = new WeakMap<BSTNode, T>();
     #root?: BSTNode;
@@ -307,7 +312,6 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
      * @param iterable An optional iterable of elements to initialize the set with.
      */
     constructor(private readonly compareFn: (a: T, b: T) => number, iterable?: Iterable<T>) {
-        super();
         for (const data of iterable ?? [])
             this.add(data);
     }
@@ -751,7 +755,13 @@ export class TreeSet<T> extends Collection<T, T> implements SetInterface<T> {
 
     get [Symbol.toStringTag](): string { return "TreeSet"; }
 
+    get [Symbol.isConcatSpreadable](): true { return true; }
+
     public static from<S>(iterable: Iterable<S>): TreeSet<S> {
         return new TreeSet((a, b) => a == b ? 0 : a < b ? -1 : 1, iterable);
+    }
+
+    public static of<S>(...items: S[]): TreeSet<S> {
+        return new TreeSet((a, b) => a == b ? 0 : a < b ? -1 : 1, items);
     }
 }
