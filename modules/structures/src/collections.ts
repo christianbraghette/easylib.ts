@@ -17,7 +17,6 @@
  */
 
 import { FlattenStep } from ".";
-import type { Pipe } from "./pipeline";
 
 export interface ConcatIterable<T> extends Iterable<T> {
     [Symbol.isConcatSpreadable]: boolean;
@@ -30,10 +29,7 @@ export abstract class Collection<K, V> {
     abstract keys(): IterableIterator<K>;
     abstract values(): IterableIterator<V>;
     abstract entries(): IterableIterator<[K, V]>;
-
-    abstract pipe(): Pipe<V> | Pipe<[K, V]>;
-    abstract pipe<U>(transformer: ((source: Pipe<V>) => Iterable<U>) | ((source: Pipe<[K, V]>) => Iterable<[K, U]>)): Collection<K, U>;
-
+    
     abstract [Symbol.iterator](): IterableIterator<V> | IterableIterator<[K, V]>;
     abstract [Symbol.toStringTag]: string;
 

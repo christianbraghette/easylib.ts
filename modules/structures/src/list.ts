@@ -18,7 +18,7 @@
 
 import { FlattenStep } from ".";
 import { Collection, ConcatIterable, Deque, List } from "./collections";
-import { Pipe } from "./pipeline";
+
 
 class DoublyLinkedNode {
     constructor(public next?: DoublyLinkedNode, public prev?: DoublyLinkedNode) { }
@@ -260,15 +260,6 @@ export class ArrayList<T> extends Collection<number, T> implements List<T> {
         }
 
         return new ArrayList<U>(result);
-    }
-
-    public pipe(): Pipe<T>
-    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>): ArrayList<U>
-    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>): ArrayList<U> | Pipe<T> {
-        const pipeline = new Pipe(this.values())
-        if (!transformer)
-            return pipeline;
-        return new ArrayList(transformer(pipeline));
     }
 
     public sort(compareFn?: (a: T, b: T) => number): this {
@@ -922,15 +913,6 @@ export class LinkedList<T> extends Collection<number, T> implements List<T>, Deq
             }
         };
         return new LinkedList<U>(flatMappedGenerator());
-    }
-
-    public pipe(): Pipe<T>
-    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>): LinkedList<U>
-    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>): LinkedList<U> | Pipe<T> {
-        const pipeline = new Pipe(this.values())
-        if (!transformer)
-            return pipeline;
-        return new LinkedList(transformer(pipeline));
     }
 
     /**

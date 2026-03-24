@@ -20,7 +20,7 @@ import { Tuple } from "./index";
 import { Collection } from "./collections";
 import { ArrayList } from "./list";
 import { HashMap, TreeMap } from "./map";
-import { Pipe } from "./pipeline";
+
 
 interface LocAccessor<T> extends Iterable<T> {
     [key: Key]: T;
@@ -327,15 +327,6 @@ export class Series<V> extends Collection<Key, V> {
         this.#keys.clear();
         this.#values.clear();
         this.#map.clear();
-    }
-
-    public pipe(): Pipe<[Key, V]>
-    public pipe<U>(transformer: (source: Pipe<[Key, V]>) => Iterable<[Key, U]>): HashMap<Key, U>
-    public pipe<U>(transformer?: (source: Pipe<[Key, V]>) => Iterable<[Key, U]>): HashMap<Key, U> | Pipe<[Key, V]> {
-        const pipeline = new Pipe(this.entries())
-        if (!transformer)
-            return pipeline;
-        return new HashMap(transformer(pipeline));
     }
 
     public keys(): IterableIterator<Key> {

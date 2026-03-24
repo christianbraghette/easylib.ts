@@ -18,7 +18,7 @@
 
 import { Collection, type Map as MapInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
-import { Pipe } from "./pipeline";
+
 
 export function isMap(obj: any): boolean {
     return obj instanceof HashMap || obj instanceof TreeMap;
@@ -169,15 +169,6 @@ export class HashMap<K, V> extends Collection<K, V> implements MapInterface<K, V
             if (predicate(value, key, this)) return value as S;
         }
         return undefined;
-    }
-
-    public pipe(): Pipe<[K, V]>
-    public pipe<U>(transformer: (source: Pipe<[K, V]>) => Iterable<[K, U]>): HashMap<K, U>
-    public pipe<U>(transformer?: (source: Pipe<[K, V]>) => Iterable<[K, U]>): HashMap<K, U> | Pipe<[K, V]> {
-        const pipeline = new Pipe(this.entries())
-        if (!transformer)
-            return pipeline;
-        return new HashMap(transformer(pipeline));
     }
 
     public sort(compareFn: (a: [K, V], b: [K, V]) => number): this {
@@ -614,15 +605,6 @@ export class TreeMap<K, V> extends Collection<K, V> implements MapInterface<K, V
             if (predicate(value, key, this)) return value as S;
         }
         return undefined;
-    }
-
-    public pipe(): Pipe<[K, V]>
-    public pipe<U>(transformer: (source: Pipe<[K, V]>) => Iterable<[K, U]>): TreeMap<K, U>
-    public pipe<U>(transformer?: (source: Pipe<[K, V]>) => Iterable<[K, U]>): TreeMap<K, U> | Pipe<[K, V]> {
-        const pipeline = new Pipe(this.entries())
-        if (!transformer)
-            return pipeline;
-        return new TreeMap(this.compareFn, transformer(pipeline));
     }
 
     /**

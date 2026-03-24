@@ -20,7 +20,7 @@ import { BinaryHeap } from "./heap";
 import { Collection, type Queue } from "./collections";
 import { LinkedList } from "./list";
 import { FlattenStep } from ".";
-import { Pipe } from "./pipeline";
+
 
 export function isQueue(obj: any): boolean {
     return obj instanceof LinkedQueue || obj instanceof PriorityQueue || obj instanceof LinkedList;
@@ -212,15 +212,6 @@ export class LinkedQueue<T> extends Collection<number, T> implements Queue<T> {
         this.#counts.clear();
         this.#head = undefined;
         this.#length = 0;
-    }
-
-    public pipe(): Pipe<T>
-    public pipe<U>(transformer: (source: Pipe<T>) => Iterable<U>): LinkedQueue<U>
-    public pipe<U>(transformer?: (source: Pipe<T>) => Iterable<U>): LinkedQueue<U> | Pipe<T> {
-        const pipeline = new Pipe(this.values())
-        if (!transformer)
-            return pipeline;
-        return new LinkedQueue(transformer(pipeline));
     }
 
     public *keys(): IterableIterator<number> {
@@ -564,15 +555,6 @@ export class PriorityQueue<T> extends Collection<number, T> implements Queue<T> 
         }
 
         return newQueue;
-    }
-
-    public pipe(): Pipe<[number, T]>
-    public pipe<U>(transformer: (source: Pipe<[number, T]>) => Iterable<[number, U]>): PriorityQueue<U>
-    public pipe<U>(transformer?: (source: Pipe<[number, T]>) => Iterable<[number, U]>): PriorityQueue<U> | Pipe<[number, T]> {
-        const pipeline = new Pipe(this.entries())
-        if (!transformer)
-            return pipeline;
-        return new PriorityQueue(transformer(pipeline));
     }
 
     /**
