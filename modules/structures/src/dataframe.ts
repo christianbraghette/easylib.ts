@@ -36,7 +36,7 @@ function isna(value: any) {
     return value === undefined || value === null || (typeof value === 'number' && isNaN(value));
 }
 
-export class Series<V> extends Collection<Key, V> {
+export class Series<V> {
     #map = new TreeMap<Key, number>((a, b) => a == b ? 0 : a < b ? -1 : 1);
     #keys = new ArrayList<Key>()
     #values = new ArrayList<V>();
@@ -44,7 +44,6 @@ export class Series<V> extends Collection<Key, V> {
     constructor(values: Iterable<[Key, V]>)
     constructor(length: number)
     constructor(values: Iterable<[Key, V]> | number) {
-        super();
         if (typeof values === 'number') {
             this.#keys = new ArrayList<Key>(values)
             this.#values = new ArrayList<V>(values);
@@ -353,7 +352,9 @@ export class Series<V> extends Collection<Key, V> {
         return cache;
     }
 
-    [Symbol.toStringTag]: string = "Series";
+    get [Symbol.toStringTag](): string { return "Series"; };
+
+    get [Symbol.isConcatSpreadable](): true { return true; }
 
     private static LocAccessor = class <T> implements LocAccessor<T> {
         [key: Key]: T;

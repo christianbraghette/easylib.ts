@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { Collection, type Map as MapInterface } from "./collections";
+import { type Map as MapInterface } from "./collections";
 import { ArrayList, LinkedList } from "./list";
 
 
@@ -24,14 +24,13 @@ export function isMap(obj: any): boolean {
     return obj instanceof HashMap || obj instanceof TreeMap;
 }
 
-export class HashMap<K, V> extends Collection<K, V> implements MapInterface<K, V> {
+export class HashMap<K, V> implements MapInterface<K, V> {
     #map: Map<K, V>;
 
     /**
      * @param iterable An optional iterable of key-value pairs to initialize the map.
      */
     constructor(iterable?: Iterable<[K, V]>) {
-        super()
         this.#map = new Map(iterable);
     }
 
@@ -221,10 +220,16 @@ export class HashMap<K, V> extends Collection<K, V> implements MapInterface<K, V
         return array;
     }
 
-    get [Symbol.toStringTag](): string { return "HashMap" };
+    get [Symbol.toStringTag](): string { return "HashMap"; }
+
+    get [Symbol.isConcatSpreadable](): true { return true; }
 
     public static from<R, S>(iterable: Iterable<[R, S]>): HashMap<R, S> {
         return new HashMap(iterable);
+    }
+
+    public static of<R, S>(...items: [R, S][]): HashMap<R, S> {
+        return new HashMap(items);
     }
 }
 
@@ -237,7 +242,7 @@ class BSTNode {
     public color: Color = Color.RED;
 }
 
-export class TreeMap<K, V> extends Collection<K, V> implements MapInterface<K, V> {
+export class TreeMap<K, V> implements MapInterface<K, V> {
     #size: number = 0;
     #values = new WeakMap<BSTNode, V>();
     #keys = new WeakMap<BSTNode, K>();
@@ -250,7 +255,6 @@ export class TreeMap<K, V> extends Collection<K, V> implements MapInterface<K, V
      * @param iterable An optional iterable (e.g., an Array of [key, value] pairs) to initialize the map.
      */
     constructor(private readonly compareFn: (a: K, b: K) => number, iterable?: Iterable<[K, V]>) {
-        super()
         for (const [key, value] of iterable ?? [])
             this.set(key, value);
     }
@@ -660,9 +664,15 @@ export class TreeMap<K, V> extends Collection<K, V> implements MapInterface<K, V
     /**
      * Tag used by Object.prototype.toString.
      */
-    get [Symbol.toStringTag](): string { return "TreeMap" };
+    get [Symbol.toStringTag](): string { return "TreeMap"; }
+
+    get [Symbol.isConcatSpreadable](): true { return true; }
 
     public static from<R, S>(iterable: Iterable<[R, S]>): TreeMap<R, S> {
         return new TreeMap((a, b) => a == b ? 0 : a < b ? -1 : 1, iterable);
+    }
+
+    public static of<R, S>(...items: [R, S][]): TreeMap<R, S> {
+        return new TreeMap((a, b) => a == b ? 0 : a < b ? -1 : 1, items);
     }
 }
